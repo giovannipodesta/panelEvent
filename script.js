@@ -11,8 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const idValue = document.getElementById('idValue');
     const toast = document.getElementById('toast');
 
-    // API Configuration
-    const API_URL = 'http://192.168.0.101:3000/api/generar-token';
+    // API URLs - usando configuración centralizada
+    const API_URL = API_CONFIG.getUrl(API_CONFIG.ENDPOINTS.GENERATE_TOKEN);
 
     generateBtn.addEventListener('click', async () => {
         // UI Loading State
@@ -134,8 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const skipBtn = document.getElementById('skipBtn');
     const approveBtn = document.getElementById('approveBtn');
 
-    const PENDING_API_URL = 'http://192.168.0.101:3000/api/usuarios-pendientes';
-    const APPROVE_API_URL = 'http://192.168.0.101:3000/api/users';
+    const PENDING_API_URL = API_CONFIG.getUrl(API_CONFIG.ENDPOINTS.PENDING_USERS);
 
     let allUsers = []; // Master list
     let pendingUsers = []; // Filtered list
@@ -305,11 +304,14 @@ document.addEventListener('DOMContentLoaded', () => {
         skipBtn.disabled = true;
 
         try {
-            const response = await fetch(`${APPROVE_API_URL}/${user.id_uuid}/aprobar`, {
-                method: 'POST',
+            const response = await fetch(API_CONFIG.getUserUrl(user.id_uuid, 'aprobar'), {
+                method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json'
-                }
+                },
+                body: JSON.stringify({
+                    asistencia: true
+                })
             });
 
             if (!response.ok) throw new Error('Error al aprobar usuario');
