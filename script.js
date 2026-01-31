@@ -497,10 +497,20 @@ document.addEventListener('DOMContentLoaded', () => {
         guestResult.classList.add('hidden');
 
         try {
-            // SIMULACION DE PROCESAMIENTO
-            // await fetch(API_URL_FOR_GUESTS, { body: JSON.stringify({ guests: guestList }) ... });
+            // SIMULACION DE PROCESAMIENTO -> AHORA REAL
+            const response = await fetch(API_CONFIG.getUrl(API_CONFIG.ENDPOINTS.BULK_INVITATIONS), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    numeros: guestList
+                })
+            });
 
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            if (!response.ok) throw new Error('Error al procesar la lista');
+
+            const data = await response.json();
 
             // Show Result
             guestResult.innerHTML = `

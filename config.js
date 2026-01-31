@@ -1,14 +1,15 @@
 // API Configuration
 const API_CONFIG = {
     // Base URL - cambiar aquí para actualizar todas las peticiones
-    BASE_URL: 'https://evento.encuentra-facil.com/api',
-    // BASE_URL: 'http://192.168.0.101:3000/api',
+    // BASE_URL: 'https://evento.encuentra-facil.com/api',
+    BASE_URL: 'http://localhost:3000/api',
 
     // Endpoints
     ENDPOINTS: {
         GENERATE_TOKEN: '/generar-token',
         PENDING_USERS: '/usuarios-pendientes',
-        USERS: '/users'
+        USERS: '/users',
+        BULK_INVITATIONS: '/invitaciones/bulk/evento-ef'
     },
 
     // Helper para construir URLs completas
