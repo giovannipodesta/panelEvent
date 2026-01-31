@@ -534,6 +534,14 @@ input {
 }
 
 @media (max-width: 850px) {
+    body {
+        padding: 10px;
+    }
+
+    .container {
+        gap: 1.5rem;
+    }
+
     .pending-container {
         grid-template-columns: 1fr;
     }
@@ -542,11 +550,72 @@ input {
         position: static;
         width: 100%;
         order: -1;
-        /* Filter on top on mobile */
+        margin-bottom: 1.5rem;
     }
 
     .filter-list {
         max-height: 200px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 0.5rem;
+    }
+    
+    .filter-btn {
+        justify-content: center;
+        text-align: center;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .pending-content {
+        margin-top: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    header h1 {
+        font-size: 1.5rem;
+    }
+
+    .tabs-container {
+        flex-wrap: wrap;
+    }
+
+    .tab-btn {
+        flex: 1 1 100%; /* Stack on very small screens or wrap nicely */
+        justify-content: flex-start;
+    }
+
+    .user-card {
+        padding: 1.5rem 1rem;
+    }
+
+    .user-avatar {
+        width: 80px;
+        height: 80px;
+        font-size: 2rem;
+    }
+
+    .card-actions {
+        flex-direction: column;
+    }
+
+    .detail-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+    
+    .detail-value {
+        align-self: flex-end; /* Align values to right for clean look, or left if preferred */
+    }
+
+    /* Prevent iOS Zoom */
+    input, 
+    .text-input, 
+    select, 
+    textarea {
+        font-size: 16px !important;
     }
 }
 
