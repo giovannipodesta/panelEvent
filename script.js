@@ -411,6 +411,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Event Listeners
     addGuestBtn.addEventListener('click', addGuest);
+
+    guestInput.addEventListener('input', () => {
+        if (guestInput.value.length > 10) {
+            guestInput.value = guestInput.value.slice(0, 10);
+        }
+    });
+
     guestInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') addGuest();
     });
