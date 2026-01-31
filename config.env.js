@@ -4,7 +4,7 @@
 
 const ENV_CONFIG = {
     // Entorno actual: 'development' | 'production'
-    ENVIRONMENT: 'development',
+    ENVIRONMENT: 'production',
     
     // Configuración por entorno
     development: {
