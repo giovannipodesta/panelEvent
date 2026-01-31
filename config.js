@@ -1,8 +1,14 @@
 // API Configuration
+// Usa variables de entorno desde config.env.js
 const API_CONFIG = {
-    // Base URL - cambiar aquí para actualizar todas las peticiones
-    // BASE_URL: 'https://evento.encuentra-facil.com/api',
-    BASE_URL: 'http://localhost:3000/api',
+    // Base URL - se obtiene desde ENV_CONFIG
+    get BASE_URL() {
+        if (typeof ENV_CONFIG === 'undefined') {
+            console.error('ENV_CONFIG no está definido. Asegúrate de cargar config.env.js antes de config.js');
+            return 'http://localhost:3000/api'; // Fallback
+        }
+        return ENV_CONFIG.current.API_BASE_URL;
+    },
 
     // Endpoints
     ENDPOINTS: {

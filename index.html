@@ -15,6 +15,9 @@
 <body>
     <div class="container">
         <header>
+            <div class="logo-container">
+                <img src="assets/Logo-large.webp" alt="Logo" class="logo">
+            </div>
             <h1>Generador de Accesos</h1>
             <p>Sistema de gestión de invitaciones</p>
         </header>
@@ -189,6 +192,33 @@
                         </div>
                     </div>
 
+                    <!-- Contact Picker Section -->
+                    <div id="contactPickerWrapper" class="contact-picker-wrapper">
+                        <div class="divider"><span>o importar desde</span></div>
+                        <button id="contactPickerBtn" class="contact-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg>
+                            <span class="btn-text">Seleccionar de Contactos</span>
+                        </button>
+                        <div id="contactPickerNotice" class="contact-picker-notice hidden">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="16" x2="12" y2="12"></line>
+                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                            </svg>
+                            <span>Disponible solo en navegadores móviles (Chrome Android). En desktop usa el campo manual.</span>
+                        </div>
+                        <div id="contactPickerUnsupported" class="contact-picker-unsupported hidden">
+                            Contact Picker no disponible en este navegador. Usa el campo manual arriba.
+                        </div>
+                    </div>
+
                     <div class="list-wrapper">
                         <label>Invitados en Lista (<span id="guestCount">0</span>)</label>
                         <div id="guestListContainer" class="guest-list-container">
@@ -211,6 +241,7 @@
         </main>
     </div>
     <div id="toast" class="toast hidden">URL copiada al portapapeles</div>
+    <script src="config.env.js"></script>
     <script src="config.js"></script>
     <script src="categories.js"></script>
     <script src="script.js"></script>

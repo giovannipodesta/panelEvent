@@ -403,11 +403,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const processLoader = processGuestsBtn.querySelector('.loader');
     const processBtnText = processGuestsBtn.querySelector('.btn-text');
 
+    // Contact Picker Elements
+    const contactPickerBtn = document.getElementById('contactPickerBtn');
+    const contactPickerNotice = document.getElementById('contactPickerNotice');
+    const contactPickerUnsupported = document.getElementById('contactPickerUnsupported');
+
     // Load from LocalStorage
     let guestList = JSON.parse(localStorage.getItem('guestList')) || [];
 
     // Initialize
     updateGuestListUI();
+    initContactPicker();
 
     // Event Listeners
     addGuestBtn.addEventListener('click', addGuest);
@@ -482,6 +488,101 @@ document.addEventListener('DOMContentLoaded', () => {
 
             guestListContainer.appendChild(item);
         });
+    }
+
+    // ==========================================
+    // CONTACT PICKER API
+    // ==========================================
+    function initContactPicker() {
+        const isSupported = ('contacts' in navigator && 'ContactsManager' in window);
+        
+        if (isSupported) {
+            // Show notice for desktop users (API only works on mobile)
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            if (!isMobile) {
+                contactPickerNotice.classList.remove('hidden');
+            }
+            
+            contactPickerBtn.addEventListener('click', selectContactsFromDevice);
+        } else {
+            // API not supported - show unsupported message
+            contactPickerBtn.disabled = true;
+            contactPickerUnsupported.classList.remove('hidden');
+        }
+    }
+
+    async function selectContactsFromDevice() {
+        const isSupported = ('contacts' in navigator && 'ContactsManager' in window);
+        
+        if (!isSupported) {
+            showToast('Contact Picker no soportado');
+            return;
+        }
+
+        try {
+            // Request contact properties
+            const props = ['name', 'tel'];
+            const opts = { multiple: true };
+
+            // Open native contact picker
+            const contacts = await navigator.contacts.select(props, opts);
+            
+            if (contacts.length === 0) {
+                showToast('No se seleccionaron contactos');
+                return;
+            }
+
+            let addedCount = 0;
+            let skippedCount = 0;
+
+            contacts.forEach(contact => {
+                if (contact.tel && contact.tel.length > 0) {
+                    contact.tel.forEach(phoneNumber => {
+                        // Clean phone number: remove spaces, dashes, country code
+                        let cleanNumber = phoneNumber.replace(/[\s\-\(\)]/g, '');
+                        
+                        // Remove country code if present (+593, 593, etc.)
+                        if (cleanNumber.startsWith('+593')) {
+                            cleanNumber = '0' + cleanNumber.slice(4);
+                        } else if (cleanNumber.startsWith('593')) {
+                            cleanNumber = '0' + cleanNumber.slice(3);
+                        }
+                        
+                        // Ensure it starts with 0 if it doesn't
+                        if (!cleanNumber.startsWith('0') && cleanNumber.length === 9) {
+                            cleanNumber = '0' + cleanNumber;
+                        }
+                        
+                        // Validate 10 digits
+                        if (/^\d{10}$/.test(cleanNumber)) {
+                            if (!guestList.includes(cleanNumber)) {
+                                guestList.unshift(cleanNumber);
+                                addedCount++;
+                            } else {
+                                skippedCount++;
+                            }
+                        }
+                    });
+                }
+            });
+
+            if (addedCount > 0) {
+                saveAndRender();
+                showToast(`${addedCount} número(s) agregado(s)${skippedCount > 0 ? `, ${skippedCount} duplicado(s)` : ''}`);
+            } else if (skippedCount > 0) {
+                showToast(`${skippedCount} número(s) ya estaban en la lista`);
+            } else {
+                showToast('No se encontraron números válidos');
+            }
+
+        } catch (err) {
+            if (err.name === 'AbortError') {
+                // User cancelled - do nothing
+                return;
+            }
+            console.error('Contact Picker Error:', err);
+            showToast('Error al acceder a contactos');
+        }
     }
 
     processGuestsBtn.addEventListener('click', async () => {
