@@ -356,4 +356,161 @@ document.addEventListener('DOMContentLoaded', () => {
             skipBtn.disabled = false;
         }
     }
+    // ==========================================
+    // TABS LOGIC
+    // ==========================================
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetId = btn.getAttribute('data-tab');
+
+            // Update Buttons
+            tabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Update Sections
+            tabContents.forEach(content => {
+                content.classList.add('hidden');
+                // Remove active class if it was used for initial state, though we use hidden class logic mainly
+                content.classList.remove('active');
+            });
+
+            // Show Target
+            const targetSection = document.getElementById(
+                targetId === 'generator' ? 'generatorSection' :
+                    targetId === 'pending' ? 'pendingSection' :
+                        'specialGuestsSection'
+            );
+
+            if (targetSection) {
+                targetSection.classList.remove('hidden');
+                targetSection.classList.add('active'); // Just in case for animations
+            }
+        });
+    });
+
+    // ==========================================
+    // SPECIAL GUESTS LOGIC
+    // ==========================================
+    const guestInput = document.getElementById('guestInput');
+    const addGuestBtn = document.getElementById('addGuestBtn');
+    const guestListContainer = document.getElementById('guestListContainer');
+    const guestCount = document.getElementById('guestCount');
+    const processGuestsBtn = document.getElementById('processGuestsBtn');
+    const guestResult = document.getElementById('guestResult');
+    const processLoader = processGuestsBtn.querySelector('.loader');
+    const processBtnText = processGuestsBtn.querySelector('.btn-text');
+
+    // Load from LocalStorage
+    let guestList = JSON.parse(localStorage.getItem('guestList')) || [];
+
+    // Initialize
+    updateGuestListUI();
+
+    // Event Listeners
+    addGuestBtn.addEventListener('click', addGuest);
+    guestInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') addGuest();
+    });
+
+    function addGuest() {
+        const number = guestInput.value.trim();
+
+        // VAL: 10 Digits
+        if (!/^\d{10}$/.test(number)) {
+            showToast('El número debe tener 10 dígitos');
+            return;
+        }
+
+        // VAL: Unique
+        if (guestList.includes(number)) {
+            showToast('Este número ya está en la lista');
+            return;
+        }
+
+        // Add
+        guestList.unshift(number); // Add to top
+        saveAndRender();
+
+        // Reset Input
+        guestInput.value = '';
+        guestInput.focus();
+        showToast('Número agregado');
+    }
+
+    function removeGuest(number) {
+        guestList = guestList.filter(n => n !== number);
+        saveAndRender();
+        showToast('Número eliminado');
+    }
+
+    function saveAndRender() {
+        localStorage.setItem('guestList', JSON.stringify(guestList));
+        updateGuestListUI();
+    }
+
+    function updateGuestListUI() {
+        guestCount.textContent = guestList.length;
+        guestListContainer.innerHTML = '';
+
+        if (guestList.length === 0) {
+            guestListContainer.innerHTML = '<div class="empty-list-msg">No hay números agregados</div>';
+            return;
+        }
+
+        guestList.forEach(num => {
+            const item = document.createElement('div');
+            item.className = 'guest-item';
+            item.innerHTML = `
+                <span class="guest-number">${num}</span>
+                <button class="delete-btn" aria-label="Eliminar">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
+            `;
+
+            // Delete Action
+            item.querySelector('.delete-btn').addEventListener('click', () => removeGuest(num));
+
+            guestListContainer.appendChild(item);
+        });
+    }
+
+    processGuestsBtn.addEventListener('click', async () => {
+        if (guestList.length === 0) {
+            showToast('La lista está vacía');
+            return;
+        }
+
+        // Set Loading
+        processGuestsBtn.disabled = true;
+        processBtnText.classList.add('hidden');
+        processLoader.classList.remove('hidden');
+        guestResult.classList.add('hidden');
+
+        try {
+            // SIMULACION DE PROCESAMIENTO
+            // await fetch(API_URL_FOR_GUESTS, { body: JSON.stringify({ guests: guestList }) ... });
+
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            // Show Result
+            guestResult.innerHTML = `
+                <h4 style="margin-bottom:0.5rem; color:var(--success)">¡Lista Procesada!</h4>
+                <p>Se han enviado <strong>${guestList.length}</strong> invitaciones.</p>
+            `;
+            guestResult.classList.remove('hidden');
+            showToast('Invitaciones enviadas con éxito');
+
+        } catch (error) {
+            console.error(error);
+            showToast('Error al procesar la lista');
+        } finally {
+            processGuestsBtn.disabled = false;
+            processBtnText.classList.remove('hidden');
+            processLoader.classList.add('hidden');
+        }
+    });
+
 });

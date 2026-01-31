@@ -19,43 +19,78 @@
             <p>Sistema de gestión de invitaciones</p>
         </header>
 
-        <main>
-            <button id="generateBtn" class="primary-btn">
-                <span class="btn-text">Generar Token</span>
-                <span class="loader hidden"></span>
+        <nav class="tabs-container">
+            <button class="tab-btn active" data-tab="generator">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                Generador
             </button>
+            <button class="tab-btn" data-tab="pending">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                Pendientes
+            </button>
+            <button class="tab-btn" data-tab="special-guests">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                Invitados Especiales
+            </button>
+        </nav>
 
-            <div id="resultContainer" class="result-card hidden">
-                <div class="result-header">
-                    <span class="status-badge" id="statusBadge">Habilitado</span>
-                    <span class="timestamp" id="timestamp"></span>
-                </div>
+        <main>
+            <!-- Tab 1: Generator -->
+            <section id="generatorSection" class="tab-content active">
+                <button id="generateBtn" class="primary-btn">
+                    <span class="btn-text">Generar Token</span>
+                    <span class="loader hidden"></span>
+                </button>
 
-                <div class="url-group">
-                    <label>URL de Invitación</label>
-                    <div class="input-wrapper">
-                        <input type="text" id="urlInput" readonly>
-                        <button id="copyBtn" class="icon-btn" title="Copiar URL">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                            </svg>
-                        </button>
+                <div id="resultContainer" class="result-card hidden">
+                    <div class="result-header">
+                        <span class="status-badge" id="statusBadge">Habilitado</span>
+                        <span class="timestamp" id="timestamp"></span>
+                    </div>
+
+                    <div class="url-group">
+                        <label>URL de Invitación</label>
+                        <div class="input-wrapper">
+                            <input type="text" id="urlInput" readonly>
+                            <button id="copyBtn" class="icon-btn" title="Copiar URL">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="token-info">
+                        <div class="info-item">
+                            <span class="label">ID:</span>
+                            <span class="value" id="idValue"></span>
+                        </div>
                     </div>
                 </div>
+            </section>
 
-                <div class="token-info">
-                    <div class="info-item">
-                        <span class="label">ID:</span>
-                        <span class="value" id="idValue"></span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Pending Users Section -->
-            <section id="pendingSection" class="pending-section">
+            <!-- Tab 2: Pending Users -->
+            <section id="pendingSection" class="tab-content hidden">
                 <div class="section-header">
                     <h2>Usuarios Pendientes</h2>
                     <span class="counter" id="userCounter">0 / 0</span>
@@ -127,6 +162,50 @@
                     <span class="btn-text">Cargar Usuarios Pendientes</span>
                     <span class="loader hidden"></span>
                 </button>
+            </section>
+
+            <!-- Tab 3: Special Guests -->
+            <section id="specialGuestsSection" class="tab-content hidden">
+                <div class="result-card guest-panel">
+                    <div class="section-header">
+                        <h2>Registro de Invitados Especiales</h2>
+                        <p class="section-desc">Ingresa una lista de números de teléfono para autorizar invitaciones.
+                        </p>
+                    </div>
+
+                    <div class="url-group">
+                        <label for="guestInput">Agregar Nuevo Número</label>
+                        <div class="input-wrapper input-group">
+                            <input type="number" id="guestInput" class="text-input" placeholder="099xxxxxxx">
+                            <button id="addGuestBtn" class="icon-btn add-btn" title="Agregar">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="list-wrapper">
+                        <label>Invitados en Lista (<span id="guestCount">0</span>)</label>
+                        <div id="guestListContainer" class="guest-list-container">
+                            <!-- Items inserted via JS -->
+                        </div>
+                    </div>
+
+                    <div class="section-footer">
+                        <button id="processGuestsBtn" class="primary-btn">
+                            <span class="btn-text">Procesar Lista</span>
+                            <span class="loader hidden"></span>
+                        </button>
+                    </div>
+
+                    <div id="guestResult" class="guest-result hidden">
+                        <!-- Result summary will go here -->
+                    </div>
+                </div>
             </section>
         </main>
     </div>
