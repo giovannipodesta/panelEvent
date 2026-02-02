@@ -10,12 +10,25 @@ const API_CONFIG = {
         return ENV_CONFIG.current.API_BASE_URL;
     },
 
+    // Autenticación para endpoints protegidos
+    get AUTH_HEADER() {
+        return 'Basic ' + btoa('gpodesta:3ncuentr4e.C25');
+    },
+
+    // Headers comunes para peticiones autenticadas
+    get authHeaders() {
+        return {
+            'Authorization': this.AUTH_HEADER,
+            'Content-Type': 'application/json'
+        };
+    },
+
     // Endpoints
     ENDPOINTS: {
         GENERATE_TOKEN: '/generar-token',
         PENDING_USERS: '/usuarios-pendientes',
         USERS: '/users',
-        BULK_INVITATIONS: '/invitaciones/bulk/evento-ef'
+        BULK_INVITATIONS: '/invitaciones/bulk/evento-prod'
     },
 
     // Helper para construir URLs completas

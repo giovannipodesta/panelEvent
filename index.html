@@ -31,15 +31,14 @@
                 </svg>
                 Generador
             </button>
-            <button class="tab-btn" data-tab="pending">
+            <button class="tab-btn" data-tab="admin">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                    <path d="M2 17l10 5 10-5"></path>
+                    <path d="M2 12l10 5 10-5"></path>
                 </svg>
-                Pendientes
+                Administrar
             </button>
             <button class="tab-btn" data-tab="special-guests">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -92,8 +91,20 @@
                 </div>
             </section>
 
-            <!-- Tab 2: Pending Users -->
-            <section id="pendingSection" class="tab-content hidden">
+            <!-- Tab 2: Admin Panel -->
+            <section id="adminSection" class="tab-content hidden">
+                <!-- Sub-tabs for Admin -->
+                <nav class="sub-tabs-container">
+                    <button class="sub-tab-btn active" data-subtab="pending">
+                        Pendientes
+                    </button>
+                    <button class="sub-tab-btn" data-subtab="stats">
+                        Estadísticas
+                    </button>
+                </nav>
+
+                <!-- Sub-tab 1: Pending Users -->
+                <div id="pendingSubSection" class="sub-tab-content active">
                 <div class="section-header">
                     <h2>Usuarios Pendientes</h2>
                     <span class="counter" id="userCounter">0 / 0</span>
@@ -165,6 +176,51 @@
                     <span class="btn-text">Cargar Usuarios Pendientes</span>
                     <span class="loader hidden"></span>
                 </button>
+                </div>
+
+                <!-- Sub-tab 2: Statistics -->
+                <div id="statsSubSection" class="sub-tab-content hidden">
+                    <div class="section-header">
+                        <h2>Estadísticas del Evento</h2>
+                        <p class="section-desc">Última actualización: <span id="lastUpdate">-</span></p>
+                    </div>
+
+                    <!-- Stats Grid -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3>👥 Usuarios Registrados</h3>
+                            <div class="stat-value" id="totalUsuarios">-</div>
+                            <div class="stat-subtitle" id="subtitleUsuarios">Cargando...</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>📤 Mensajes Enviados</h3>
+                            <div class="stat-value" id="totalMensajes">-</div>
+                            <div class="stat-subtitle" id="subtitleMensajes">Cargando...</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>🎟️ Tokens Disponibles</h3>
+                            <div class="stat-value" id="tokensDisponibles">-</div>
+                            <div class="stat-subtitle" id="subtitleTokens">Cargando...</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>✓ Asistencia Confirmada</h3>
+                            <div class="stat-value" id="conAsistencia">-</div>
+                            <div class="stat-subtitle" id="subtitleAsistencia">Cargando...</div>
+                        </div>
+                    </div>
+
+                    <!-- Programmed Messages Table -->
+                    <div class="result-card">
+                        <h3>⏱️ Mensajes Programados Pendientes</h3>
+                        <div id="mensajesProgramados" class="loading-container">Cargando...</div>
+                    </div>
+
+                    <!-- Recent Messages Table -->
+                    <div class="result-card">
+                        <h3>📜 Historial de Envíos</h3>
+                        <div id="mensajesRecientes" class="loading-container">Cargando...</div>
+                    </div>
+                </div>
             </section>
 
             <!-- Tab 3: Special Guests -->

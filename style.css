@@ -753,6 +753,201 @@ input {
 }
 
 /* ========================================= */
+/* SUB-TABS STYLES */
+/* ========================================= */
+
+.sub-tabs-container {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.4rem;
+    border-radius: 8px;
+    max-width: 400px;
+}
+
+.sub-tab-btn {
+    flex: 1;
+    padding: 0.6rem 1rem;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sub-tab-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+}
+
+.sub-tab-btn.active {
+    background: var(--brand-blue);
+    color: white;
+    box-shadow: 0 2px 8px rgba(3, 64, 120, 0.3);
+}
+
+.sub-tab-content {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+/* ========================================= */
+/* STATISTICS STYLES */
+/* ========================================= */
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    background: var(--card-bg-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.stat-card h3 {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+    font-weight: 500;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--accent-yellow);
+    margin-bottom: 0.5rem;
+}
+
+.stat-subtitle {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.loading-container {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-muted);
+}
+
+/* ========================================= */
+/* RESPONSIVE TABLES FOR STATS */
+/* ========================================= */
+
+.stats-table-container {
+    overflow-x: auto;
+    margin-top: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+
+.stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 600px;
+}
+
+.stats-table thead {
+    background: rgba(255, 255, 255, 0.03);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.stats-table th {
+    padding: 0.875rem 1rem;
+    text-align: left;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+}
+
+.stats-table td {
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.875rem;
+    color: var(--text-main);
+}
+
+.stats-table tbody tr {
+    transition: background 0.2s ease;
+}
+
+.stats-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.stats-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Responsive table for mobile */
+@media (max-width: 768px) {
+    .stats-table {
+        min-width: 100%;
+        font-size: 0.8rem;
+    }
+    
+    .stats-table th,
+    .stats-table td {
+        padding: 0.625rem 0.5rem;
+        font-size: 0.75rem;
+    }
+    
+    .stats-table th {
+        font-size: 0.7rem;
+    }
+    
+    /* Hide less important columns on mobile */
+    .stats-table .hide-mobile {
+        display: none;
+    }
+}
+
+/* Stats summary text */
+.stats-summary {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.stats-summary-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+@media (max-width: 640px) {
+    .stats-summary {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: flex-start;
+    }
+}
+
+/* ========================================= */
 /* GUEST PANEL STYLES */
 /* ========================================= */
 

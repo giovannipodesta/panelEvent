@@ -4,11 +4,11 @@
 
 const ENV_CONFIG = {
     // Entorno actual: 'development' | 'production'
-    ENVIRONMENT: 'production',
+    ENVIRONMENT: 'development',
     
     // Configuración por entorno
     development: {
-        API_BASE_URL: 'http://100.67.71.55:3000/api',
+        API_BASE_URL: 'https://evento.encuentra-facil.com/api',
         // Agregar otras variables de desarrollo aquí
     },
     

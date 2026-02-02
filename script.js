@@ -153,7 +153,9 @@ document.addEventListener('DOMContentLoaded', () => {
         currentCategoryFilter = ''; // Reset filter logic
 
         try {
-            const response = await fetch(PENDING_API_URL);
+            const response = await fetch(PENDING_API_URL, {
+                headers: { 'Authorization': API_CONFIG.AUTH_HEADER }
+            });
             if (!response.ok) throw new Error('Error al cargar usuarios');
 
             const data = await response.json();
@@ -306,9 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch(API_CONFIG.getUserUrl(user.id_uuid, 'aprobar'), {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: API_CONFIG.authHeaders,
                 body: JSON.stringify({
                     asistencia: true
                 })
@@ -380,7 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Show Target
             const targetSection = document.getElementById(
                 targetId === 'generator' ? 'generatorSection' :
-                    targetId === 'pending' ? 'pendingSection' :
+                    targetId === 'admin' ? 'adminSection' :
                         'specialGuestsSection'
             );
 
@@ -601,9 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // SIMULACION DE PROCESAMIENTO -> AHORA REAL
             const response = await fetch(API_CONFIG.getUrl(API_CONFIG.ENDPOINTS.BULK_INVITATIONS), {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: API_CONFIG.authHeaders,
                 body: JSON.stringify({
                     numeros: guestList
                 })
@@ -630,5 +628,291 @@ document.addEventListener('DOMContentLoaded', () => {
             processLoader.classList.add('hidden');
         }
     });
+
+    // ==========================================
+    // SUB-TABS LOGIC (Admin Panel)
+    // ==========================================
+    const subTabBtns = document.querySelectorAll('.sub-tab-btn');
+    const subTabContents = document.querySelectorAll('.sub-tab-content');
+
+    subTabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetSubTab = btn.getAttribute('data-subtab');
+
+            // Update Buttons
+            subTabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Update Sub-sections
+            subTabContents.forEach(content => {
+                content.classList.add('hidden');
+                content.classList.remove('active');
+            });
+
+            // Show Target
+            const targetSection = document.getElementById(
+                targetSubTab === 'pending' ? 'pendingSubSection' : 'statsSubSection'
+            );
+
+            if (targetSection) {
+                targetSection.classList.remove('hidden');
+                targetSection.classList.add('active');
+            }
+
+            // Load stats if switching to stats tab
+            if (targetSubTab === 'stats') {
+                loadStatistics();
+            }
+        });
+    });
+
+    // ==========================================
+    // STATISTICS LOGIC
+    // ==========================================
+
+    async function loadStatistics() {
+        updateTimestamp();
+        
+        try {
+            await Promise.all([
+                loadUserStats(),
+                loadEvolutionStats(),
+                loadTokenStats(),
+                loadProgramados(),
+                loadHistorial()
+            ]);
+        } catch (error) {
+            console.error('Error loading statistics:', error);
+            showToast('Error al cargar estadísticas');
+        }
+    }
+
+    async function loadUserStats() {
+        try {
+            const response = await fetch(API_CONFIG.getUrl('/stats/usuarios'), {
+                headers: { 'Authorization': API_CONFIG.AUTH_HEADER }
+            });
+            if (!response.ok) throw new Error('Error loading user stats');
+            
+            const data = await response.json();
+            const stats = data.stats;
+            
+            document.getElementById('totalUsuarios').textContent = stats.total || 0;
+            document.getElementById('subtitleUsuarios').textContent = 
+                `${stats.aprobados || 0} aprobados, ${stats.pendientes || 0} pendientes`;
+            
+            document.getElementById('conAsistencia').textContent = stats.conAsistencia || 0;
+            const percentage = stats.total > 0 ? Math.round((stats.conAsistencia / stats.total) * 100) : 0;
+            document.getElementById('subtitleAsistencia').textContent = `${percentage}% del total`;
+        } catch (error) {
+            console.error('Error loading user stats:', error);
+            document.getElementById('totalUsuarios').textContent = 'Error';
+            document.getElementById('subtitleUsuarios').textContent = 'No disponible';
+        }
+    }
+
+    async function loadEvolutionStats() {
+        try {
+            const response = await fetch(API_CONFIG.getUrl('/evolution-stats/stats/evento-prod'), {
+                headers: { 'Authorization': API_CONFIG.AUTH_HEADER }
+            });
+            if (!response.ok) throw new Error('Error loading evolution stats');
+            
+            const data = await response.json();
+            const stats = data.stats;
+            
+            document.getElementById('totalMensajes').textContent = stats.mensajesEnviados || 0;
+            document.getElementById('subtitleMensajes').textContent = 
+                `${stats.mensajesLeidos || 0} leídos, ${stats.mensajesRecibidos || 0} respuestas`;
+        } catch (error) {
+            console.error('Error loading evolution stats:', error);
+            document.getElementById('totalMensajes').textContent = 'Error';
+            document.getElementById('subtitleMensajes').textContent = 'No disponible';
+        }
+    }
+
+    async function loadTokenStats() {
+        try {
+            const response = await fetch(API_CONFIG.getUrl('/stats/tokens'), {
+                headers: { 'Authorization': API_CONFIG.AUTH_HEADER }
+            });
+            if (!response.ok) throw new Error('Error loading token stats');
+            
+            const data = await response.json();
+            const stats = data.stats;
+            
+            document.getElementById('tokensDisponibles').textContent = stats.disponibles || 0;
+            document.getElementById('subtitleTokens').textContent = 
+                `${stats.consumidos || 0} consumidos de ${stats.total || 0} total`;
+        } catch (error) {
+            console.error('Error loading token stats:', error);
+            document.getElementById('tokensDisponibles').textContent = 'Error';
+            document.getElementById('subtitleTokens').textContent = 'No disponible';
+        }
+    }
+
+    async function loadProgramados() {
+        const container = document.getElementById('mensajesProgramados');
+        if (!container) return;
+        
+        try {
+            const response = await fetch(API_CONFIG.getUrl('/evolution-stats/programados/evento-prod'), {
+                headers: { 'Authorization': API_CONFIG.AUTH_HEADER }
+            });
+            if (!response.ok) throw new Error('Error loading programados');
+            
+            const data = await response.json();
+            
+            if (data.total === 0) {
+                container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 2rem;">No hay mensajes programados pendientes</p>';
+                return;
+            }
+
+            const table = `
+                <div class="stats-table-container">
+                    <table class="stats-table">
+                        <thead>
+                            <tr>
+                                <th>📱 Teléfono</th>
+                                <th>🕐 Hora Ecuador</th>
+                                <th>⏱️ Tiempo Restante</th>
+                                <th>📊 Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.envios.map(e => `
+                                <tr>
+                                    <td>${e.telefono}</td>
+                                    <td>${e.horaEcuador}</td>
+                                    <td class="tiempo" data-ts="${e.timestampEnvio}">${e.tiempoRestante.texto}</td>
+                                    <td>${getEstadoBadge(e.estado)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            container.innerHTML = table;
+        } catch (error) {
+            console.error('Error loading programados:', error);
+            container.innerHTML = '<p style="color: var(--danger); text-align: center; padding: 2rem;">Error al cargar</p>';
+        }
+    }
+
+    async function loadHistorial() {
+        const container = document.getElementById('mensajesRecientes');
+        if (!container) return;
+        
+        try {
+            const response = await fetch(API_CONFIG.getUrl('/evolution-stats/historial/evento-prod?limite=20'), {
+                headers: { 'Authorization': API_CONFIG.AUTH_HEADER }
+            });
+            if (!response.ok) throw new Error('Error loading historial');
+            
+            const data = await response.json();
+            
+            if (data.total === 0) {
+                container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 2rem;">No hay historial</p>';
+                return;
+            }
+
+            const statsText = `
+                <div class="stats-summary">
+                    <div class="stats-summary-item">
+                        <span>📊 Pendientes:</span>
+                        <strong>${data.stats.pendientes}</strong>
+                    </div>
+                    <div class="stats-summary-item">
+                        <span>✅ Enviados:</span>
+                        <strong>${data.stats.enviados}</strong>
+                    </div>
+                    <div class="stats-summary-item">
+                        <span>❌ Errores:</span>
+                        <strong>${data.stats.errores}</strong>
+                    </div>
+                </div>
+            `;
+
+            const table = `
+                <div class="stats-table-container">
+                    <table class="stats-table">
+                        <thead>
+                            <tr>
+                                <th>📱 Teléfono</th>
+                                <th>🕐 Programado</th>
+                                <th>📊 Estado</th>
+                                <th class="hide-mobile">📅 Enviado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.envios.map(e => `
+                                <tr>
+                                    <td>${e.telefono}</td>
+                                    <td>${e.horaEcuador}</td>
+                                    <td>${getEstadoBadge(e.estado)}</td>
+                                    <td class="hide-mobile">${formatDate(e.enviadoAt)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            container.innerHTML = statsText + table;
+        } catch (error) {
+            console.error('Error loading historial:', error);
+            container.innerHTML = '<p style="color: var(--danger); text-align: center; padding: 2rem;">Error al cargar historial</p>';
+        }
+    }
+
+    function getEstadoBadge(estado) {
+        const badges = {
+            'pendiente': { color: '#856404', bg: '#fff3cd' },
+            'procesando': { color: '#0c5460', bg: '#d1ecf1' },
+            'enviado': { color: '#155724', bg: '#d4edda' },
+            'entregado': { color: '#155724', bg: '#d4edda' },
+            'leido': { color: '#155724', bg: '#d4edda' },
+            'error': { color: '#721c24', bg: '#f8d7da' },
+            'PENDIENTE': { color: '#856404', bg: '#fff3cd' },
+            'PROCESANDO': { color: '#0c5460', bg: '#d1ecf1' },
+            'ENVIADO': { color: '#155724', bg: '#d4edda' },
+            'ENTREGADO': { color: '#155724', bg: '#d4edda' },
+            'LEIDO': { color: '#155724', bg: '#d4edda' },
+            'ERROR': { color: '#721c24', bg: '#f8d7da' }
+        };
+        const badge = badges[estado] || badges['pendiente'];
+        return `<span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 500; background: ${badge.bg}; color: ${badge.color};">${estado}</span>`;
+    }
+
+    // Actualizar tiempo restante cada segundo
+    setInterval(() => {
+        document.querySelectorAll('.tiempo').forEach(td => {
+            const ts = Number(td.dataset.ts);
+            const diff = ts - Date.now();
+            if (diff <= 0) { td.textContent = 'Enviando...'; return; }
+            const h = Math.floor(diff / 3600000);
+            const m = Math.floor((diff % 3600000) / 60000);
+            const s = Math.floor((diff % 60000) / 1000);
+            td.textContent = h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
+        });
+    }, 1000);
+
+    function formatDate(dateString) {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+        return date.toLocaleString('es-EC', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    function updateTimestamp() {
+        const lastUpdateEl = document.getElementById('lastUpdate');
+        if (lastUpdateEl) {
+            lastUpdateEl.textContent = new Date().toLocaleTimeString('es-EC');
+        }
+    }
 
 });
