@@ -388,6 +388,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 targetSection.classList.remove('hidden');
                 targetSection.classList.add('active'); // Just in case for animations
             }
+
+            if (targetId === 'special-guests') {
+                loadSpecialGuestStats();
+            }
         });
     });
 
@@ -407,6 +411,59 @@ document.addEventListener('DOMContentLoaded', () => {
     const contactPickerBtn = document.getElementById('contactPickerBtn');
     const contactPickerNotice = document.getElementById('contactPickerNotice');
     const contactPickerUnsupported = document.getElementById('contactPickerUnsupported');
+
+    // Stats Elements
+    const sgTotal = document.getElementById('sgTotal');
+    const sgHabilitados = document.getElementById('sgHabilitados');
+    const sgConsumidos = document.getElementById('sgConsumidos');
+    const sgAceptados = document.getElementById('sgAceptados');
+    const sgRechazados = document.getElementById('sgRechazados');
+    const sgSinRespuesta = document.getElementById('sgSinRespuesta');
+
+    async function loadSpecialGuestStats() {
+        // Debug: Show loading state
+        sgTotal.textContent = '...';
+        sgHabilitados.textContent = '...';
+        sgConsumidos.textContent = '...';
+
+        try {
+            const url = API_CONFIG.getUrl(API_CONFIG.ENDPOINTS.STATS_TOKENS);
+            console.log('Fetching stats from:', url);
+
+            const response = await fetch(url, {
+                headers: { 'Authorization': API_CONFIG.AUTH_HEADER }
+            });
+
+            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+
+            const data = await response.json();
+            console.log('Stats Data:', data);
+
+            // Check for stats object directly or inside data
+            const s = data.stats || data;
+
+            if (s) {
+                sgTotal.textContent = s.total !== undefined ? s.total : 'N/A';
+                sgHabilitados.textContent = s.habilitados !== undefined ? s.habilitados : 'N/A';
+                sgConsumidos.textContent = s.consumidos !== undefined ? s.consumidos : 'N/A';
+
+                // Acceptance stats
+                if (s.aceptacion) {
+                    sgAceptados.textContent = s.aceptacion.aceptados || 0;
+                    sgRechazados.textContent = s.aceptacion.rechazados || 0;
+                    sgSinRespuesta.textContent = s.aceptacion.sinRespuesta || 0;
+                }
+            } else {
+                console.warn('No stats data found in response');
+                sgTotal.textContent = 'No Data';
+            }
+
+        } catch (error) {
+            console.error('Error loading special guest stats:', error);
+            sgTotal.textContent = 'Err';
+            sgHabilitados.textContent = 'Err';
+        }
+    }
 
     // Load from LocalStorage
     let guestList = JSON.parse(localStorage.getItem('guestList')) || [];
@@ -495,14 +552,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     function initContactPicker() {
         const isSupported = ('contacts' in navigator && 'ContactsManager' in window);
-        
+
         if (isSupported) {
             // Show notice for desktop users (API only works on mobile)
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             if (!isMobile) {
                 contactPickerNotice.classList.remove('hidden');
             }
-            
+
             contactPickerBtn.addEventListener('click', selectContactsFromDevice);
         } else {
             // API not supported - show unsupported message
@@ -513,7 +570,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function selectContactsFromDevice() {
         const isSupported = ('contacts' in navigator && 'ContactsManager' in window);
-        
+
         if (!isSupported) {
             showToast('Contact Picker no soportado');
             return;
@@ -526,7 +583,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Open native contact picker
             const contacts = await navigator.contacts.select(props, opts);
-            
+
             if (contacts.length === 0) {
                 showToast('No se seleccionaron contactos');
                 return;
@@ -540,19 +597,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     contact.tel.forEach(phoneNumber => {
                         // Clean phone number: remove spaces, dashes, country code
                         let cleanNumber = phoneNumber.replace(/[\s\-\(\)]/g, '');
-                        
+
                         // Remove country code if present (+593, 593, etc.)
                         if (cleanNumber.startsWith('+593')) {
                             cleanNumber = '0' + cleanNumber.slice(4);
                         } else if (cleanNumber.startsWith('593')) {
                             cleanNumber = '0' + cleanNumber.slice(3);
                         }
-                        
+
                         // Ensure it starts with 0 if it doesn't
                         if (!cleanNumber.startsWith('0') && cleanNumber.length === 9) {
                             cleanNumber = '0' + cleanNumber;
                         }
-                        
+
                         // Validate 10 digits
                         if (/^\d{10}$/.test(cleanNumber)) {
                             if (!guestList.includes(cleanNumber)) {
@@ -659,6 +716,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 targetSection.classList.add('active');
             }
 
+            if (targetSection) {
+                targetSection.classList.remove('hidden');
+                targetSection.classList.add('active');
+            }
+
             // Load stats if switching to stats tab
             if (targetSubTab === 'stats') {
                 loadStatistics();
@@ -667,12 +729,31 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ==========================================
+    // SPECIAL GUESTS SUB-TABS LOGIC
+    // ==========================================
+    // (Removed: Single view restoration)
+
+    const refreshBtn = document.getElementById('refreshSgStatsBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            loadSpecialGuestStats();
+            // Add rotation animation temporarily
+            const icon = refreshBtn.querySelector('svg');
+            if (icon) {
+                icon.style.transition = 'transform 0.5s ease';
+                icon.style.transform = 'rotate(180deg)';
+                setTimeout(() => icon.style.transform = 'rotate(0deg)', 500);
+            }
+        });
+    }
+
+    // ==========================================
     // STATISTICS LOGIC
     // ==========================================
 
     async function loadStatistics() {
         updateTimestamp();
-        
+
         try {
             await Promise.all([
                 loadUserStats(),
@@ -693,14 +774,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Authorization': API_CONFIG.AUTH_HEADER }
             });
             if (!response.ok) throw new Error('Error loading user stats');
-            
+
             const data = await response.json();
             const stats = data.stats;
-            
+
             document.getElementById('totalUsuarios').textContent = stats.total || 0;
-            document.getElementById('subtitleUsuarios').textContent = 
+            document.getElementById('subtitleUsuarios').textContent =
                 `${stats.aprobados || 0} aprobados, ${stats.pendientes || 0} pendientes`;
-            
+
             document.getElementById('conAsistencia').textContent = stats.conAsistencia || 0;
             const percentage = stats.total > 0 ? Math.round((stats.conAsistencia / stats.total) * 100) : 0;
             document.getElementById('subtitleAsistencia').textContent = `${percentage}% del total`;
@@ -717,12 +798,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Authorization': API_CONFIG.AUTH_HEADER }
             });
             if (!response.ok) throw new Error('Error loading evolution stats');
-            
+
             const data = await response.json();
             const stats = data.stats;
-            
+
             document.getElementById('totalMensajes').textContent = stats.mensajesEnviados || 0;
-            document.getElementById('subtitleMensajes').textContent = 
+            document.getElementById('subtitleMensajes').textContent =
                 `${stats.mensajesLeidos || 0} leídos, ${stats.mensajesRecibidos || 0} respuestas`;
         } catch (error) {
             console.error('Error loading evolution stats:', error);
@@ -737,12 +818,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Authorization': API_CONFIG.AUTH_HEADER }
             });
             if (!response.ok) throw new Error('Error loading token stats');
-            
+
             const data = await response.json();
             const stats = data.stats;
-            
+
             document.getElementById('tokensDisponibles').textContent = stats.disponibles || 0;
-            document.getElementById('subtitleTokens').textContent = 
+            document.getElementById('subtitleTokens').textContent =
                 `${stats.consumidos || 0} consumidos de ${stats.total || 0} total`;
         } catch (error) {
             console.error('Error loading token stats:', error);
@@ -754,15 +835,15 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadProgramados() {
         const container = document.getElementById('mensajesProgramados');
         if (!container) return;
-        
+
         try {
             const response = await fetch(API_CONFIG.getUrl('/evolution-stats/programados/evento-prod'), {
                 headers: { 'Authorization': API_CONFIG.AUTH_HEADER }
             });
             if (!response.ok) throw new Error('Error loading programados');
-            
+
             const data = await response.json();
-            
+
             if (data.total === 0) {
                 container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 2rem;">No hay mensajes programados pendientes</p>';
                 return;
@@ -802,15 +883,15 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadHistorial() {
         const container = document.getElementById('mensajesRecientes');
         if (!container) return;
-        
+
         try {
             const response = await fetch(API_CONFIG.getUrl('/evolution-stats/historial/evento-prod?limite=20'), {
                 headers: { 'Authorization': API_CONFIG.AUTH_HEADER }
             });
             if (!response.ok) throw new Error('Error loading historial');
-            
+
             const data = await response.json();
-            
+
             if (data.total === 0) {
                 container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 2rem;">No hay historial</p>';
                 return;

@@ -28,7 +28,8 @@ const API_CONFIG = {
         GENERATE_TOKEN: '/generar-token',
         PENDING_USERS: '/usuarios-pendientes',
         USERS: '/users',
-        BULK_INVITATIONS: '/invitaciones/bulk/evento-prod'
+        BULK_INVITATIONS: '/invitaciones/bulk/evento-prod',
+        STATS_TOKENS: '/stats/tokens'
     },
 
     // Helper para construir URLs completas

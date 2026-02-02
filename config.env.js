@@ -5,18 +5,18 @@
 const ENV_CONFIG = {
     // Entorno actual: 'development' | 'production'
     ENVIRONMENT: 'development',
-    
+
     // Configuración por entorno
     development: {
-        API_BASE_URL: 'https://evento.encuentra-facil.com/api',
+        API_BASE_URL: 'http://localhost:3000/api',
         // Agregar otras variables de desarrollo aquí
     },
-    
+
     production: {
         API_BASE_URL: 'https://evento.encuentra-facil.com/api',
         // Agregar otras variables de producción aquí
     },
-    
+
     // Helper para obtener la configuración actual
     get current() {
         return this[this.ENVIRONMENT];
