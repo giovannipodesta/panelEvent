@@ -4,6 +4,13 @@
 
 <head>
     <meta charset="UTF-8">
+    <script>
+        const isLocal = window.location.hostname === 'localhost' ||
+            window.location.hostname === '127.0.0.1' ||
+            window.location.hostname.startsWith('192.168.');
+        const baseHref = isLocal ? '/' : '/panel/';
+        document.write('<base href="' + baseHref + '">');
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel de Token</title>
     <link rel="stylesheet" href="style.css">
@@ -16,7 +23,7 @@
     <div class="container">
         <header>
             <div class="logo-container">
-                <img src="/panel/assets/Logo-large.webp" alt="Logo" class="logo">
+                <img id="appLogo" src="" alt="Logo" class="logo">
             </div>
             <h1>Generador de Accesos</h1>
             <p>Sistema de gestión de invitaciones</p>
@@ -331,9 +338,11 @@
                     <div class="section-footer">
                         <button id="processGuestsBtn" class="primary-btn">
                             <span class="btn-text">Procesar Lista</span>
-                            <div id="guestResult" class="guest-result hidden">
-                                <!-- Result summary will go here -->
-                            </div>
+                            <span class="loader hidden"></span>
+                        </button>
+                        <div id="guestResult" class="guest-result hidden">
+                            <!-- Result summary will go here -->
+                        </div>
                     </div> <!-- End of .guest-panel -->
                 </div> <!-- End of #sgRegisterSubSection -->
 
@@ -387,6 +396,10 @@
     </div>
     <div id="toast" class="toast hidden">URL copiada al portapapeles</div>
     <script src="config.env.js"></script>
+    <script>
+        // Set asset paths immediately after config loads
+        document.getElementById('appLogo').src = ENV_CONFIG.getAssetPath('assets/Logo-large.webp');
+    </script>
     <script src="config.js"></script>
     <script src="categories.js"></script>
     <script src="script.js"></script>
