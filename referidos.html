@@ -83,6 +83,47 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal de Detalles -->
+    <div class="modal-overlay" id="detailsModal" style="z-index: 1100;">
+        <div class="modal-content details-content">
+            <button class="close-modal-btn" onclick="closeDetailsModal()">×</button>
+
+            <div class="details-header">
+                <div class="details-avatar" id="detailAvatar">?</div>
+                <h3 class="details-title" id="detailPhone">099-999-9999</h3>
+                <div class="details-subtitle" id="detailName">Nombre no registrado</div>
+                <div class="details-cedula" id="detailCedula">CI: -</div>
+            </div>
+
+            <div class="details-grid">
+                <div class="detail-box">
+                    <span class="d-label">Estado</span>
+                    <span class="d-value" id="detailStatus">-</span>
+                </div>
+                <div class="detail-box">
+                    <span class="d-label">Referido Por</span>
+                    <span class="d-value" id="detailReferrer">-</span>
+                </div>
+                <div class="detail-box">
+                    <span class="d-label">Creado</span>
+                    <span class="d-value" id="detailCreated">-</span>
+                </div>
+                <div class="detail-box">
+                    <span class="d-label">Expira</span>
+                    <span class="d-value" id="detailExpires">-</span>
+                </div>
+            </div>
+
+            <p class="details-note" id="detailMessage">
+                Este token permite acceso al evento. Verifica los datos antes de aprobar.
+            </p>
+
+            <div class="details-actions" id="detailActions">
+                <!-- Se llenan dinámicamente -->
+            </div>
+        </div>
+    </div>
     <div id="toast" class="toast hidden">Acción completada</div>
     <script src="config.env.js"></script>
     <script>document.getElementById('appLogo').src = ENV_CONFIG.getAssetPath('assets/Logo-large.webp');</script>

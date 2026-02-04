@@ -297,24 +297,27 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (isRechazado) statusBadge = '<span class="status-badge badge-rechazado">Rechazado</span>';
             else statusBadge = '<span class="status-badge badge-sin-usar">Sin Usar</span>';
 
+            // Safe onclick wrapper to avoid triggering when clicking small buttons
+            const rowClick = `openDetailsModal('${referido.id}')`;
+
             return `
-                <div class="referido-item-row">
+                <div class="referido-item-row" onclick="${rowClick}">
                     <div class="item-info">
                         <div class="item-main">
                             <span class="item-phone">${formatPhone(referido.numeroReferido)}</span>
                             ${statusBadge}
                         </div>
                         <div class="item-sub">
-                            ${referido.cedula ? `<span>CI: ${referido.cedula}</span>` : '<span>Sin cédula</span>'}
-                             • <span>Expira: ${formatDate(referido.expiraEn)}</span>
+                            <span class="item-cedula">${referido.cedula || 'Sin Cédula'}</span>
+                            ${referido.nombre ? ` • <span>${referido.nombre}</span>` : ''}
                         </div>
                     </div>
                     <div class="item-actions">
                         ${isPendiente ? `
-                            <button class="action-btn btn-reject-sm" onclick="showRejectModal('${referido.id}')" title="Rechazar">
+                            <button class="action-btn btn-reject-sm" onclick="event.stopPropagation(); showRejectModal('${referido.id}')" title="Rechazar">
                                 ✕
                             </button>
-                            <button class="action-btn btn-approve-sm" onclick="showApproveModal('${referido.id}')" title="Aprobar">
+                            <button class="action-btn btn-approve-sm" onclick="event.stopPropagation(); showApproveModal('${referido.id}')" title="Aprobar">
                                 ✓
                             </button>
                         ` : ''}
@@ -389,6 +392,54 @@ document.addEventListener('DOMContentLoaded', () => {
         confirmModal.classList.remove('show');
         pendingAction = null;
     };
+
+    window.closeDetailsModal = function () {
+        document.getElementById('detailsModal').classList.remove('show');
+    };
+
+    window.openDetailsModal = function (id) {
+        const referido = allReferidos.find(r => r.id === id);
+        if (!referido) return;
+
+        // Populate fields
+        document.getElementById('detailAvatar').textContent = getInitial(referido.nombre || referido.numeroReferido);
+        document.getElementById('detailPhone').textContent = formatPhone(referido.numeroReferido);
+        document.getElementById('detailName').textContent = referido.nombre || 'Nombre no registrado';
+        document.getElementById('detailCedula').textContent = 'CI: ' + (referido.cedula || 'No registrada');
+
+        document.getElementById('detailStatus').innerHTML = getStatusBadge(referido);
+        document.getElementById('detailReferrer').textContent = referido.referidoPor || 'Desconocido';
+        document.getElementById('detailCreated').textContent = formatDate(referido.createdAt);
+        document.getElementById('detailExpires').textContent = formatDate(referido.expiraEn);
+
+        // Actions
+        const actionsContainer = document.getElementById('detailActions');
+        actionsContainer.innerHTML = '';
+
+        if (referido.estado === 'consumido' && referido.aceptacion === null) {
+            actionsContainer.innerHTML = `
+                <button class="details-btn btn-large-reject" onclick="showRejectModal('${referido.id}'); closeDetailsModal();">
+                    ✕ Rechazar
+                </button>
+                <button class="details-btn btn-large-approve" onclick="showApproveModal('${referido.id}'); closeDetailsModal();">
+                    ✓ Aprobar Solicitud
+                </button>
+            `;
+        } else if (referido.aceptacion === 'ACEPTADO') {
+            actionsContainer.innerHTML = `<div style="width: 100%; text-align: center; color: var(--success); font-weight: 600;">✅ Ya aprobado</div>`;
+        } else if (referido.aceptacion === 'RECHAZADO') {
+            actionsContainer.innerHTML = `<div style="width: 100%; text-align: center; color: var(--danger); font-weight: 600;">❌ Rechazado</div>`;
+        }
+
+        document.getElementById('detailsModal').classList.add('show');
+    };
+
+    function getStatusBadge(referido) {
+        if (referido.aceptacion === 'ACEPTADO') return '<span class="status-badge badge-aceptado">Aceptado</span>';
+        if (referido.aceptacion === 'RECHAZADO') return '<span class="status-badge badge-rechazado">Rechazado</span>';
+        if (referido.estado === 'consumido') return '<span class="status-badge badge-pendiente">Pendiente</span>';
+        return '<span class="status-badge badge-sin-usar">Sin Usar</span>';
+    }
 
     async function executeAction() {
         if (!pendingAction) return;
