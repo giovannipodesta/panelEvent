@@ -207,61 +207,138 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        referidosGrid.innerHTML = filteredReferidos.map(referido => {
+        const groups = groupReferidos(filteredReferidos);
+
+        referidosGrid.innerHTML = Object.values(groups).map(group => {
+            const { referrerName, referrerCedula, items, stats } = group;
+            const groupId = 'group-' + (referrerCedula || referrerName.replace(/\s+/g, '-')).replace(/[^a-zA-Z0-9-]/g, '');
+            const hasPendientes = stats.pendientes > 0;
+
+            // Determine card border/status based on overall status
+            let cardStatusClass = '';
+            if (stats.pendientes > 0) cardStatusClass = 'status-pending';
+            else if (stats.rechazados === items.length) cardStatusClass = 'status-rejected';
+            else cardStatusClass = 'status-accepted';
+
+            return `
+                <div class="referido-group-card ${cardStatusClass}">
+                    <div class="group-header">
+                        <div class="referrer-info">
+                            <div class="referrer-avatar">${getInitial(referrerName)}</div>
+                            <div class="referrer-details">
+                                <div class="referrer-label">Referido por</div>
+                                <div class="referrer-name">${referrerName}</div>
+                                <div class="referrer-cedula">${referrerCedula || ''}</div>
+                            </div>
+                        </div>
+                        <div class="group-meta">
+                            <div class="group-badges">
+                                <span class="badge-count">${items.length} Invitados</span>
+                                ${stats.pendientes > 0 ? `<span class="badge-pending">${stats.pendientes} Pendientes</span>` : ''}
+                            </div>
+                            <button class="expand-group-btn" onclick="toggleGroup('${groupId}', this)">
+                                <span>Ver detalles</span>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="${groupId}" class="group-content" style="display: none;">
+                        <div class="referidos-list">
+                            ${renderGroupItems(items)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function groupReferidos(items) {
+        const groups = {};
+
+        items.forEach(item => {
+            const key = item.referidoPorCedula || item.referidoPor || 'Desconocido';
+
+            if (!groups[key]) {
+                groups[key] = {
+                    referrerName: item.referidoPor || 'Desconocido',
+                    referrerCedula: item.referidoPorCedula,
+                    items: [],
+                    stats: { pendientes: 0, aceptados: 0, rechazados: 0 }
+                };
+            }
+
+            groups[key].items.push(item);
+
+            // Update stats
+            if (item.estado === 'consumido' && item.aceptacion === null) {
+                groups[key].stats.pendientes++;
+            } else if (item.aceptacion === 'ACEPTADO') {
+                groups[key].stats.aceptados++;
+            } else if (item.aceptacion === 'RECHAZADO') {
+                groups[key].stats.rechazados++;
+            }
+        });
+
+        return groups;
+    }
+
+    function renderGroupItems(items) {
+        return items.map(referido => {
             const isPendiente = referido.estado === 'consumido' && referido.aceptacion === null;
             const isAceptado = referido.aceptacion === 'ACEPTADO';
             const isRechazado = referido.aceptacion === 'RECHAZADO';
-            const isHabilitado = referido.estado === 'habilitado';
 
-            const cardClass = isPendiente ? 'pendiente' : (isAceptado ? 'aceptado' : (isRechazado ? 'rechazado' : ''));
-            const badgeClass = isPendiente ? 'badge-consumido' : (isHabilitado ? 'badge-habilitado' : (isAceptado ? 'badge-aceptado' : 'badge-rechazado'));
-            const badgeText = isPendiente ? 'Registrado' : (isHabilitado ? 'Sin usar' : referido.aceptacion);
+            let statusBadge = '';
+            if (isPendiente) statusBadge = '<span class="status-badge badge-pendiente">Pendiente</span>';
+            else if (isAceptado) statusBadge = '<span class="status-badge badge-aceptado">Aceptado</span>';
+            else if (isRechazado) statusBadge = '<span class="status-badge badge-rechazado">Rechazado</span>';
+            else statusBadge = '<span class="status-badge badge-sin-usar">Sin Usar</span>';
 
             return `
-                <div class="referido-card ${cardClass}" data-id="${referido.id}">
-                    <div class="referido-header">
-                        <div class="referido-info">
-                            <div class="referido-phone">${formatPhone(referido.numeroReferido)}</div>
-                            <div class="referido-cedula">${referido.cedula || 'Sin cédula registrada'}</div>
+                <div class="referido-item-row">
+                    <div class="item-info">
+                        <div class="item-main">
+                            <span class="item-phone">${formatPhone(referido.numeroReferido)}</span>
+                            ${statusBadge}
                         </div>
-                        <span class="referido-badge ${badgeClass}">${badgeText}</span>
+                        <div class="item-sub">
+                            ${referido.cedula ? `<span>CI: ${referido.cedula}</span>` : '<span>Sin cédula</span>'}
+                             • <span>Expira: ${formatDate(referido.expiraEn)}</span>
+                        </div>
                     </div>
-                    <div class="referido-body">
-                        <div class="referido-by-section">
-                            <div class="referido-by-label">👤 Referido por</div>
-                            <div class="referido-by-value">
-                                <div class="referido-by-avatar">${getInitial(referido.referidoPor || '?')}</div>
-                                <div class="referido-by-details">
-                                    <div class="referido-by-name">${referido.referidoPor || 'Desconocido'}</div>
-                                    <div class="referido-by-phone" style="font-size: 0.7rem; color: var(--text-muted);">Invitado Principal</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="referido-details">
-                            <div class="detail-item">
-                                <div class="detail-label">Creado</div>
-                                <div class="detail-value">${formatDate(referido.createdAt)}</div>
-                            </div>
-                            <div class="detail-item">
-                                <div class="detail-label">Expira</div>
-                                <div class="detail-value">${formatDate(referido.expiraEn)}</div>
-                            </div>
-                        </div>
+                    <div class="item-actions">
                         ${isPendiente ? `
-                            <div class="referido-actions">
-                                <button class="ref-action-btn btn-rechazar" onclick="showRejectModal('${referido.id}')">
-                                    ❌ Rechazar
-                                </button>
-                                <button class="ref-action-btn btn-aprobar" onclick="showApproveModal('${referido.id}')">
-                                    ✅ Aprobar
-                                </button>
-                            </div>
+                            <button class="action-btn btn-reject-sm" onclick="showRejectModal('${referido.id}')" title="Rechazar">
+                                ✕
+                            </button>
+                            <button class="action-btn btn-approve-sm" onclick="showApproveModal('${referido.id}')" title="Aprobar">
+                                ✓
+                            </button>
                         ` : ''}
                     </div>
                 </div>
             `;
         }).join('');
     }
+
+    window.toggleGroup = function (groupId, btn) {
+        const content = document.getElementById(groupId);
+        if (!content) return;
+
+        const isHidden = content.style.display === 'none';
+        content.style.display = isHidden ? 'block' : 'none';
+
+        if (isHidden) {
+            btn.classList.add('expanded');
+            btn.querySelector('span').textContent = 'Ocultar';
+        } else {
+            btn.classList.remove('expanded');
+            btn.querySelector('span').textContent = 'Ver detalles';
+        }
+    };
 
     function getEmptyMessage() {
         switch (currentFilter) {
@@ -325,6 +402,10 @@ document.addEventListener('DOMContentLoaded', () => {
             success = await aprobarReferido(pendingAction.tokenId);
         } else if (pendingAction.type === 'rechazar') {
             success = await rechazarReferido(pendingAction.tokenId);
+        }
+
+        if (success) {
+            filterReferidos();
         }
 
         btn.disabled = false;
