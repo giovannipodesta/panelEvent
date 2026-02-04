@@ -362,6 +362,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const tabBtns = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
 
+    // Mapa de tabs a secciones
+    const tabSectionMap = {
+        'special-guests': 'specialGuestsSection',
+        'admin': 'adminSection',
+        'generator': 'generatorSection'
+    };
+
     tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             const targetId = btn.getAttribute('data-tab');
@@ -373,27 +380,23 @@ document.addEventListener('DOMContentLoaded', () => {
             // Update Sections
             tabContents.forEach(content => {
                 content.classList.add('hidden');
-                // Remove active class if it was used for initial state, though we use hidden class logic mainly
                 content.classList.remove('active');
             });
 
             // Show Target
-            const targetSection = document.getElementById(
-                targetId === 'generator' ? 'generatorSection' :
-                    targetId === 'admin' ? 'adminSection' :
-                        'specialGuestsSection'
-            );
-
+            const targetSection = document.getElementById(tabSectionMap[targetId]);
             if (targetSection) {
                 targetSection.classList.remove('hidden');
-                targetSection.classList.add('active'); // Just in case for animations
+                targetSection.classList.add('active');
             }
 
+            // Cargar datos según el tab
             if (targetId === 'special-guests') {
                 loadSpecialGuestStats();
             }
         });
     });
+
 
     // ==========================================
     // SPECIAL GUESTS LOGIC
@@ -419,6 +422,62 @@ document.addEventListener('DOMContentLoaded', () => {
     const sgAceptados = document.getElementById('sgAceptados');
     const sgRechazados = document.getElementById('sgRechazados');
     const sgSinRespuesta = document.getElementById('sgSinRespuesta');
+
+    // Cargar stats de invitados especiales al inicio (es el tab principal)
+    // Se llama aquí porque las variables de DOM ya están definidas
+    loadSpecialGuestStats();
+
+    // Max Referidos Control Elements
+    const decreaseMaxReferidosBtn = document.getElementById('decreaseMaxReferidos');
+    const increaseMaxReferidosBtn = document.getElementById('increaseMaxReferidos');
+    const maxReferidosValueEl = document.getElementById('maxReferidosValue');
+
+    // State: Max referidos value (default 1, range 0-10)
+    let maxReferidosConfig = parseInt(localStorage.getItem('maxReferidosConfig')) || 1;
+
+    // Initialize max referidos display
+    if (maxReferidosValueEl) {
+        maxReferidosValueEl.textContent = maxReferidosConfig;
+        updateMaxReferidosButtons();
+    }
+
+    // Max Referidos Control Event Listeners
+    if (decreaseMaxReferidosBtn) {
+        decreaseMaxReferidosBtn.addEventListener('click', () => {
+            if (maxReferidosConfig > 0) {
+                maxReferidosConfig--;
+                updateMaxReferidosUI();
+            }
+        });
+    }
+
+    if (increaseMaxReferidosBtn) {
+        increaseMaxReferidosBtn.addEventListener('click', () => {
+            if (maxReferidosConfig < 10) {
+                maxReferidosConfig++;
+                updateMaxReferidosUI();
+            }
+        });
+    }
+
+    function updateMaxReferidosUI() {
+        if (maxReferidosValueEl) {
+            maxReferidosValueEl.textContent = maxReferidosConfig;
+        }
+        localStorage.setItem('maxReferidosConfig', maxReferidosConfig);
+        updateMaxReferidosButtons();
+    }
+
+    function updateMaxReferidosButtons() {
+        if (decreaseMaxReferidosBtn) {
+            decreaseMaxReferidosBtn.style.opacity = maxReferidosConfig <= 0 ? '0.3' : '1';
+            decreaseMaxReferidosBtn.style.cursor = maxReferidosConfig <= 0 ? 'not-allowed' : 'pointer';
+        }
+        if (increaseMaxReferidosBtn) {
+            increaseMaxReferidosBtn.style.opacity = maxReferidosConfig >= 10 ? '0.3' : '1';
+            increaseMaxReferidosBtn.style.cursor = maxReferidosConfig >= 10 ? 'not-allowed' : 'pointer';
+        }
+    }
 
     async function loadSpecialGuestStats() {
         // Debug: Show loading state
@@ -465,8 +524,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Load from LocalStorage
+    // Load from LocalStorage - migrar formato antiguo si es necesario
     let guestList = JSON.parse(localStorage.getItem('guestList')) || [];
+
+    // Migrar formato antiguo (array de strings) a nuevo formato (array de objetos)
+    if (guestList.length > 0 && typeof guestList[0] === 'string') {
+        guestList = guestList.map(num => ({
+            numero: num,
+            maxReferidos: maxReferidosConfig
+        }));
+        localStorage.setItem('guestList', JSON.stringify(guestList));
+    }
 
     // Initialize
     updateGuestListUI();
@@ -495,13 +563,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // VAL: Unique
-        if (guestList.includes(number)) {
+        if (guestList.some(g => g.numero === number)) {
             showToast('Este número ya está en la lista');
             return;
         }
 
-        // Add
-        guestList.unshift(number); // Add to top
+        // Add con el maxReferidos configurado globalmente
+        guestList.unshift({
+            numero: number,
+            maxReferidos: maxReferidosConfig
+        });
         saveAndRender();
 
         // Reset Input
@@ -511,10 +582,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function removeGuest(number) {
-        guestList = guestList.filter(n => n !== number);
+        guestList = guestList.filter(g => g.numero !== number);
         saveAndRender();
         showToast('Número eliminado');
     }
+
+    function updateGuestMaxReferidos(number, delta) {
+        const guest = guestList.find(g => g.numero === number);
+        if (!guest) return;
+
+        const newValue = guest.maxReferidos + delta;
+        if (newValue >= 0 && newValue <= 10) {
+            guest.maxReferidos = newValue;
+            saveAndRender();
+        }
+    }
+
+    // Exponer función globalmente para onclick
+    window.updateGuestMaxReferidos = updateGuestMaxReferidos;
 
     function saveAndRender() {
         localStorage.setItem('guestList', JSON.stringify(guestList));
@@ -530,18 +615,26 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        guestList.forEach(num => {
+        guestList.forEach(guest => {
             const item = document.createElement('div');
             item.className = 'guest-item';
             item.innerHTML = `
-                <span class="guest-number">${num}</span>
+                <div class="guest-info">
+                    <span class="guest-number">${guest.numero}</span>
+                    <div class="guest-referidos-control">
+                        <button class="mini-control-btn decrease" onclick="updateGuestMaxReferidos('${guest.numero}', -1)" ${guest.maxReferidos <= 0 ? 'disabled' : ''}>−</button>
+                        <span class="mini-referidos-value">${guest.maxReferidos}</span>
+                        <button class="mini-control-btn increase" onclick="updateGuestMaxReferidos('${guest.numero}', 1)" ${guest.maxReferidos >= 10 ? 'disabled' : ''}>+</button>
+                        <span class="referidos-label">ref</span>
+                    </div>
+                </div>
                 <button class="delete-btn" aria-label="Eliminar">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                 </button>
             `;
 
             // Delete Action
-            item.querySelector('.delete-btn').addEventListener('click', () => removeGuest(num));
+            item.querySelector('.delete-btn').addEventListener('click', () => removeGuest(guest.numero));
 
             guestListContainer.appendChild(item);
         });
@@ -612,8 +705,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         // Validate 10 digits
                         if (/^\d{10}$/.test(cleanNumber)) {
-                            if (!guestList.includes(cleanNumber)) {
-                                guestList.unshift(cleanNumber);
+                            if (!guestList.some(g => g.numero === cleanNumber)) {
+                                guestList.unshift({
+                                    numero: cleanNumber,
+                                    maxReferidos: maxReferidosConfig
+                                });
                                 addedCount++;
                             } else {
                                 skippedCount++;
@@ -656,11 +752,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             // SIMULACION DE PROCESAMIENTO -> AHORA REAL
-            const response = await fetch(API_CONFIG.getUrl(API_CONFIG.ENDPOINTS.BULK_INVITATIONS), {
+            const response = await fetch(API_CONFIG.getBulkInvitationsUrl(), {
                 method: 'POST',
                 headers: API_CONFIG.authHeaders,
                 body: JSON.stringify({
-                    numeros: guestList
+                    // Enviar lista con maxReferidos individual por cada invitado
+                    invitados: guestList.map(g => ({
+                        numero: g.numero,
+                        maxReferidos: g.maxReferidos
+                    }))
                 })
             });
 
@@ -668,13 +768,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const data = await response.json();
 
+            // Calcular estadísticas de referidos
+            const totalReferidos = guestList.reduce((sum, g) => sum + g.maxReferidos, 0);
+            const promedioRef = guestList.length > 0 ? (totalReferidos / guestList.length).toFixed(1) : 0;
+
             // Show Result
             guestResult.innerHTML = `
-                <h4 style="margin-bottom:0.5rem; color:var(--success)">¡Lista Procesada!</h4>
+                <h4 style="margin-bottom:0.5rem; color:var(--success)">✅ ¡Lista Procesada!</h4>
                 <p>Se han enviado <strong>${guestList.length}</strong> invitaciones.</p>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">
+                    Total acompañantes permitidos: <strong>${totalReferidos}</strong> 
+                    (promedio: ${promedioRef} por invitado)
+                </p>
             `;
             guestResult.classList.remove('hidden');
             showToast('Invitaciones enviadas con éxito');
+
+            // Limpiar lista después de procesar exitosamente
+            guestList = [];
+            saveAndRender();
 
         } catch (error) {
             console.error(error);
@@ -794,7 +906,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadEvolutionStats() {
         try {
-            const response = await fetch(API_CONFIG.getUrl('/evolution-stats/stats/evento-prod'), {
+            const response = await fetch(API_CONFIG.getEvolutionStatsUrl(), {
                 headers: { 'Authorization': API_CONFIG.AUTH_HEADER }
             });
             if (!response.ok) throw new Error('Error loading evolution stats');
@@ -837,47 +949,50 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!container) return;
 
         try {
-            const response = await fetch(API_CONFIG.getUrl('/evolution-stats/programados/evento-prod'), {
+            const response = await fetch(API_CONFIG.getEventUrl('/evolution-stats/programados'), {
                 headers: { 'Authorization': API_CONFIG.AUTH_HEADER }
             });
             if (!response.ok) throw new Error('Error loading programados');
 
             const data = await response.json();
 
+            // Usar el componente de tarjetas expandibles si está disponible
+            if (window.ExpandableCards) {
+                window.ExpandableCards.renderProgramados('mensajesProgramados', data);
+                return;
+            }
+
+            // Fallback si no hay componente
             if (data.total === 0) {
                 container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 2rem;">No hay mensajes programados pendientes</p>';
                 return;
             }
 
-            const table = `
-                <div class="stats-table-container">
-                    <table class="stats-table">
-                        <thead>
-                            <tr>
-                                <th>📱 Teléfono</th>
-                                <th>🕐 Hora Ecuador</th>
-                                <th>⏱️ Tiempo Restante</th>
-                                <th>📊 Estado</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${data.envios.map(e => `
-                                <tr>
-                                    <td>${e.telefono}</td>
-                                    <td>${e.horaEcuador}</td>
-                                    <td class="tiempo" data-ts="${e.timestampEnvio}">${e.tiempoRestante.texto}</td>
-                                    <td>${getEstadoBadge(e.estado)}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
+            container.innerHTML = data.envios.map(e => `
+                <div class="message-item">
+                    <div class="message-item-left">
+                        <span class="message-phone">${formatPhone(e.telefono)}</span>
+                        <span class="message-time">${e.horaEcuador}</span>
+                    </div>
+                    <div class="message-item-right">
+                        <span class="countdown-timer" data-ts="${e.timestampEnvio}">${e.tiempoRestante.texto}</span>
+                        <span class="status-badge-mini ${e.estado.toLowerCase()}">${e.estado}</span>
+                    </div>
                 </div>
-            `;
-            container.innerHTML = table;
+            `).join('');
         } catch (error) {
             console.error('Error loading programados:', error);
             container.innerHTML = '<p style="color: var(--danger); text-align: center; padding: 2rem;">Error al cargar</p>';
         }
+    }
+
+    // Formatear teléfono
+    function formatPhone(phone) {
+        if (!phone) return '-';
+        if (phone.length === 10) {
+            return `${phone.slice(0, 3)}-${phone.slice(3, 6)}-${phone.slice(6)}`;
+        }
+        return phone;
     }
 
     async function loadHistorial() {
@@ -885,60 +1000,36 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!container) return;
 
         try {
-            const response = await fetch(API_CONFIG.getUrl('/evolution-stats/historial/evento-prod?limite=20'), {
+            const response = await fetch(`${API_CONFIG.getEventUrl('/evolution-stats/historial')}?limite=20`, {
                 headers: { 'Authorization': API_CONFIG.AUTH_HEADER }
             });
             if (!response.ok) throw new Error('Error loading historial');
 
             const data = await response.json();
 
+            // Usar el componente de tarjetas expandibles si está disponible
+            if (window.ExpandableCards) {
+                window.ExpandableCards.renderHistorial('mensajesRecientes', data);
+                return;
+            }
+
+            // Fallback
             if (data.total === 0) {
                 container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 2rem;">No hay historial</p>';
                 return;
             }
 
-            const statsText = `
-                <div class="stats-summary">
-                    <div class="stats-summary-item">
-                        <span>📊 Pendientes:</span>
-                        <strong>${data.stats.pendientes}</strong>
+            container.innerHTML = data.envios.slice(0, 15).map(e => `
+                <div class="message-item">
+                    <div class="message-item-left">
+                        <span class="message-phone">${formatPhone(e.telefono)}</span>
+                        <span class="message-time">${e.horaEcuador}</span>
                     </div>
-                    <div class="stats-summary-item">
-                        <span>✅ Enviados:</span>
-                        <strong>${data.stats.enviados}</strong>
-                    </div>
-                    <div class="stats-summary-item">
-                        <span>❌ Errores:</span>
-                        <strong>${data.stats.errores}</strong>
+                    <div class="message-item-right">
+                        <span class="status-badge-mini ${e.estado.toLowerCase()}">${e.estado}</span>
                     </div>
                 </div>
-            `;
-
-            const table = `
-                <div class="stats-table-container">
-                    <table class="stats-table">
-                        <thead>
-                            <tr>
-                                <th>📱 Teléfono</th>
-                                <th>🕐 Programado</th>
-                                <th>📊 Estado</th>
-                                <th class="hide-mobile">📅 Enviado</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${data.envios.map(e => `
-                                <tr>
-                                    <td>${e.telefono}</td>
-                                    <td>${e.horaEcuador}</td>
-                                    <td>${getEstadoBadge(e.estado)}</td>
-                                    <td class="hide-mobile">${formatDate(e.enviadoAt)}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            `;
-            container.innerHTML = statsText + table;
+            `).join('');
         } catch (error) {
             console.error('Error loading historial:', error);
             container.innerHTML = '<p style="color: var(--danger); text-align: center; padding: 2rem;">Error al cargar historial</p>';
@@ -964,9 +1055,62 @@ document.addEventListener('DOMContentLoaded', () => {
         return `<span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 500; background: ${badge.bg}; color: ${badge.color};">${estado}</span>`;
     }
 
-    // Actualizar tiempo restante cada segundo
+    // ==========================================
+    // EXPANDABLE CARDS INITIALIZATION
+    // ==========================================
+    if (window.ExpandableCards) {
+        // Inicializar tarjetas expandibles
+        window.ExpandableCards.init('programadosCard');
+        window.ExpandableCards.init('historialCard');
+
+        // Iniciar actualización de contadores
+        window.ExpandableCards.startCountdownUpdates();
+
+        // Botones de refresh individuales
+        const refreshProgramadosBtn = document.getElementById('refreshProgramados');
+        if (refreshProgramadosBtn) {
+            refreshProgramadosBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                refreshProgramadosBtn.classList.add('spinning');
+                loadProgramados().finally(() => {
+                    setTimeout(() => refreshProgramadosBtn.classList.remove('spinning'), 500);
+                });
+            });
+        }
+
+        const refreshHistorialBtn = document.getElementById('refreshHistorial');
+        if (refreshHistorialBtn) {
+            refreshHistorialBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                refreshHistorialBtn.classList.add('spinning');
+                loadHistorial().finally(() => {
+                    setTimeout(() => refreshHistorialBtn.classList.remove('spinning'), 500);
+                });
+            });
+        }
+    }
+
+    // Actualizar tiempo restante cada segundo (fallback si ExpandableCards no gestiona)
     setInterval(() => {
-        document.querySelectorAll('.tiempo').forEach(td => {
+        document.querySelectorAll('.countdown-timer[data-ts]').forEach(el => {
+            const ts = Number(el.dataset.ts);
+            const diff = ts - Date.now();
+
+            if (diff <= 0) {
+                el.textContent = 'Enviando...';
+                el.classList.add('sending');
+                return;
+            }
+
+            el.classList.remove('sending');
+            const h = Math.floor(diff / 3600000);
+            const m = Math.floor((diff % 3600000) / 60000);
+            const s = Math.floor((diff % 60000) / 1000);
+            el.textContent = h > 0 ? `${h}h ${m}m ${s}s` : m > 0 ? `${m}m ${s}s` : `${s}s`;
+        });
+
+        // También manejar clase .tiempo vieja por compatibilidad
+        document.querySelectorAll('.tiempo[data-ts]').forEach(td => {
             const ts = Number(td.dataset.ts);
             const diff = ts - Date.now();
             if (diff <= 0) { td.textContent = 'Enviando...'; return; }

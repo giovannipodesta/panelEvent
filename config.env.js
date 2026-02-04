@@ -10,12 +10,14 @@ const ENV_CONFIG = {
     development: {
         API_BASE_URL: 'http://localhost:3000/api',
         BASE_PATH: '/panel/',
+        EVENT_ID: 'evento-ef',
         // Agregar otras variables de desarrollo aquí
     },
 
     production: {
         API_BASE_URL: 'https://evento.encuentra-facil.com/api',
         BASE_PATH: '/',
+        EVENT_ID: 'evento-prod',
         // Agregar otras variables de producción aquí
     },
 
