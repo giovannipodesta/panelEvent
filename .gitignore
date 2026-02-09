@@ -1,8 +1,13 @@
-# Environment Configuration
+# Environment
+.env
+.env.production
+.env.local
 config.env.local.js
 *.env.local.js
 
-# Node modules (if using build tools)
+# SvelteKit
+.svelte-kit/
+build/
 node_modules/
 
 # OS Files

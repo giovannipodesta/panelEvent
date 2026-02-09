@@ -3,13 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <script>
-        const isLocal = window.location.hostname === 'localhost' ||
-            window.location.hostname === '127.0.0.1' ||
-            window.location.hostname.startsWith('192.168.');
-        const baseHref = isLocal ? '/' : '/panel/';
-        document.write('<base href="' + baseHref + '">');
-    </script>
+    <base href="/panel/">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invitados Especiales - Panel de Gestión</title>
     <link rel="stylesheet" href="style.css">

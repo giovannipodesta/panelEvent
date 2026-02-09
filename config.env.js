@@ -15,8 +15,8 @@ const ENV_CONFIG = {
     },
 
     production: {
-        API_BASE_URL: 'https://evento.encuentra-facil.com/api',
-        BASE_PATH: '/',
+        API_BASE_URL: 'https://evento.encuentra-facil.com/api',  // Usar el proxy de nginx para evitar CORS
+        BASE_PATH: '/panel/',
         EVENT_ID: 'evento-prod',
         // Agregar otras variables de producción aquí
     },
