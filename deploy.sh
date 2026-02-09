@@ -1,144 +1,102 @@
 #!/bin/bash
+set -euo pipefail
 
-# Deployment script for panelEvent to GCloud VM evolution-evento
-# Syncs local files to /var/www/panel on the production server
-# Now supports multiple pages: panel, referidos, invitados-especiales
+# ============================================
+# Deploy SvelteKit static build to GCloud VM
+# ============================================
+# Target: /var/www/panel/ on evolution-evento
+# Auth: nginx basic auth (preserved, not touched)
+# No Node.js needed on server — pure static files
+# ============================================
 
-set -e  # Exit on error
-
-# Colors for output
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-RED='\033[0;31m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
-
-# Configuration
-VM_NAME="evolution-evento"
-VM_USER="encuentrafacil"
-REMOTE_PATH="/var/www/panel"
-TEMP_PATH="/tmp/panel-deploy"
+VM="evolution-evento"
 ZONE="us-east4-a"
+USER="encuentrafacil"
+REMOTE_PATH="/var/www/panel"
+BUILD_DIR="build"
 
-echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}  Deploying Panel Event to GCloud VM${NC}"
-echo -e "${BLUE}========================================${NC}"
+echo "========================================="
+echo "  Panel Event — Deploy to GCloud"
+echo "========================================="
+echo ""
+echo "  VM:     $VM ($ZONE)"
+echo "  Target: $REMOTE_PATH"
 echo ""
 
-# Check if gcloud is installed
-if ! command -v gcloud &> /dev/null; then
-    echo -e "${RED}Error: gcloud CLI is not installed${NC}"
-    echo "Please install it from: https://cloud.google.com/sdk/docs/install"
+# 1. Build with production env
+echo "▸ Building with production config..."
+cp .env.production .env.production.bak 2>/dev/null || true
+NODE_ENV=production npm run build
+echo "  ✓ Build complete"
+echo ""
+
+# 2. Verify build output exists
+if [ ! -d "$BUILD_DIR" ] || [ ! -f "$BUILD_DIR/index.html" ]; then
+    echo "✗ ERROR: Build directory missing or empty. Aborting."
     exit 1
 fi
 
-# Confirm deployment
-echo -e "${BLUE}Target:${NC} ${VM_USER}@${VM_NAME}:${REMOTE_PATH}"
-echo -e "${BLUE}Zone:${NC} ${ZONE}"
-echo ""
-echo -e "${YELLOW}Files to deploy:${NC}"
-echo "  - HTML: index.html, referidos.html, invitados-especiales.html"
-echo "  - CSS: style.css, referidos.css, invitados-especiales.css"
-echo "  - JS: config.env.js, config.js, categories.js, script.js, utils.js"
-echo "  - JS: referidos.js, invitados-especiales.js"
-echo "  - Directories: assets/, components/"
-echo ""
-read -p "Continue with deployment? (y/n) " -n 1 -r
+FILE_COUNT=$(find "$BUILD_DIR" -type f | wc -l | tr -d ' ')
+echo "  Files to deploy: $FILE_COUNT"
 echo ""
 
+# 3. Confirm
+read -p "Deploy $FILE_COUNT files to $VM:$REMOTE_PATH? [y/N] " -n 1 -r
+echo ""
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo -e "${RED}Deployment cancelled${NC}"
-    exit 1
+    echo "Aborted."
+    exit 0
 fi
 
+# 4. Upload build to temp dir on VM (avoids permission issues)
+TEMP_DIR="/tmp/panel-deploy-$(date +%s)"
 echo ""
-echo -e "${GREEN}Starting deployment...${NC}"
+echo "▸ Uploading build files..."
+gcloud compute scp --recurse "$BUILD_DIR"/* "$USER@$VM:$TEMP_DIR/" --zone="$ZONE"
+echo "  ✓ Upload complete"
+
+# 5. Move files to final location with correct permissions
 echo ""
+echo "▸ Deploying to $REMOTE_PATH..."
+gcloud compute ssh "$USER@$VM" --zone="$ZONE" --command="
+    # Backup current version (just in case)
+    if [ -d $REMOTE_PATH ]; then
+        sudo cp -r $REMOTE_PATH ${REMOTE_PATH}.bak-\$(date +%Y%m%d_%H%M%S) 2>/dev/null || true
+    fi
 
-# Create a temporary config.env.js for production
-echo -e "${BLUE}→ Creating production config.env.js...${NC}"
-TEMP_CONFIG=$(mktemp)
-sed "s/ENVIRONMENT: 'development'/ENVIRONMENT: 'production'/" config.env.js > "$TEMP_CONFIG"
+    # Clear old files (but preserve .htpasswd if somehow there)
+    sudo rm -rf ${REMOTE_PATH}/*
 
-# Prepare temp directory on remote
-echo -e "${BLUE}→ Preparing temporary directory on server...${NC}"
-gcloud compute ssh ${VM_USER}@${VM_NAME} --zone=${ZONE} \
-    --command="rm -rf ${TEMP_PATH} && mkdir -p ${TEMP_PATH}"
+    # Move new files
+    sudo cp -r ${TEMP_DIR}/* ${REMOTE_PATH}/
 
-# Copy main HTML files
-echo -e "${BLUE}→ Copying HTML files...${NC}"
-gcloud compute scp --zone=${ZONE} \
-    index.html \
-    referidos.html \
-    invitados-especiales.html \
-    ${VM_USER}@${VM_NAME}:${TEMP_PATH}/
+    # Set permissions
+    sudo chown -R www-data:www-data ${REMOTE_PATH}
+    sudo chmod -R 755 ${REMOTE_PATH}
 
-# Copy CSS files
-echo -e "${BLUE}→ Copying CSS files...${NC}"
-gcloud compute scp --zone=${ZONE} \
-    style.css \
-    referidos.css \
-    invitados-especiales.css \
-    ${VM_USER}@${VM_NAME}:${TEMP_PATH}/
+    # Cleanup temp
+    rm -rf ${TEMP_DIR}
 
-# Copy the production config.env.js
-echo -e "${BLUE}→ Copying config.env.js (production)...${NC}"
-gcloud compute scp --zone=${ZONE} \
-    "$TEMP_CONFIG" \
-    ${VM_USER}@${VM_NAME}:${TEMP_PATH}/config.env.js
+    echo 'Files deployed:'
+    ls -la ${REMOTE_PATH}/ | head -20
+"
 
-# Clean up local temp file
-rm "$TEMP_CONFIG"
+# 6. Verify nginx config and reload
+echo ""
+echo "▸ Verifying nginx..."
+gcloud compute ssh "$USER@$VM" --zone="$ZONE" --command="
+    sudo nginx -t && sudo systemctl reload nginx
+    echo '  ✓ Nginx reloaded'
+"
 
-# Copy other JS files
-echo -e "${BLUE}→ Copying JavaScript files...${NC}"
-gcloud compute scp --zone=${ZONE} \
-    config.js \
-    categories.js \
-    script.js \
-    utils.js \
-    referidos.js \
-    invitados-especiales.js \
-    ${VM_USER}@${VM_NAME}:${TEMP_PATH}/
-
-# Copy assets directory
-echo -e "${BLUE}→ Copying assets directory...${NC}"
-gcloud compute scp --recurse --zone=${ZONE} \
-    assets \
-    ${VM_USER}@${VM_NAME}:${TEMP_PATH}/
-
-# Copy components directory
-echo -e "${BLUE}→ Copying components directory...${NC}"
-gcloud compute scp --recurse --zone=${ZONE} \
-    components \
-    ${VM_USER}@${VM_NAME}:${TEMP_PATH}/
-
-if [ $? -eq 0 ]; then
-    echo ""
-    echo -e "${GREEN}✓ Files copied to temporary directory${NC}"
-    echo ""
-    
-    # Move files from temp to final location with sudo
-    echo -e "${BLUE}→ Moving files to ${REMOTE_PATH}...${NC}"
-    gcloud compute ssh ${VM_USER}@${VM_NAME} --zone=${ZONE} \
-        --command="sudo cp -rf ${TEMP_PATH}/* ${REMOTE_PATH}/ && rm -rf ${TEMP_PATH}"
-    
-    # Set proper permissions
-    echo -e "${BLUE}→ Setting file permissions...${NC}"
-    gcloud compute ssh ${VM_USER}@${VM_NAME} --zone=${ZONE} \
-        --command="sudo chmod -R 755 ${REMOTE_PATH} && sudo chown -R www-data:www-data ${REMOTE_PATH}"
-    
-    echo ""
-    echo -e "${GREEN}========================================${NC}"
-    echo -e "${GREEN}  Deployment completed successfully!${NC}"
-    echo -e "${GREEN}========================================${NC}"
-    echo ""
-    echo -e "${BLUE}Your panel is now live at:${NC}"
-    echo "  - https://evento.encuentra-facil.com/panel/"
-    echo "  - https://evento.encuentra-facil.com/panel/referidos.html"
-    echo "  - https://evento.encuentra-facil.com/panel/invitados-especiales.html"
-else
-    echo ""
-    echo -e "${RED}✗ Deployment failed${NC}"
-    exit 1
-fi
+echo ""
+echo "========================================="
+echo "  ✓ Deploy complete!"
+echo "========================================="
+echo ""
+echo "  URL: https://evento.encuentra-facil.com/panel/"
+echo "  Auth: nginx basic auth (unchanged)"
+echo ""
+echo "  Verify:"
+echo "    curl -sI https://evento.encuentra-facil.com/panel/ | head -5"
+echo ""

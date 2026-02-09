@@ -1,3 +1,7 @@
+<script module>
+	const _cache = new Map();
+</script>
+
 <script>
 	import { onMount } from 'svelte';
 	import { consultarCiudadano, consultarAntecedentes } from '$lib/api/endpoints.js';
@@ -11,7 +15,17 @@
 	let error = $state(null);
 
 	onMount(() => {
-		if (cedula) fetchData();
+		if (cedula) {
+			const cached = _cache.get(cedula);
+			if (cached) {
+				datos = cached.datos;
+				antecedentes = cached.antecedentes;
+				error = cached.error;
+				loading = false;
+			} else {
+				fetchData();
+			}
+		}
 	});
 
 	async function fetchData() {
@@ -22,11 +36,13 @@
 				consultarCiudadano(cedula),
 				consultarAntecedentes(cedula)
 			]);
-			if (!cRes.enabled) { error = 'disabled'; loading = false; return; }
+			if (!cRes.enabled) { error = 'disabled'; loading = false; _cache.set(cedula, { datos: null, antecedentes: null, error: 'disabled' }); return; }
 			if (cRes.success) datos = cRes.datos;
 			if (aRes.success && aRes.enabled) antecedentes = aRes.antecedentes;
+			_cache.set(cedula, { datos, antecedentes, error: null });
 		} catch (e) {
 			error = e.message || 'Error';
+			// don't cache errors — allow retry on next mount
 		} finally {
 			loading = false;
 		}

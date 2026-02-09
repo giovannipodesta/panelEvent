@@ -95,7 +95,7 @@
 	}
 
 	function addGuest() {
-		const number = phoneInput.trim();
+		const number = String(phoneInput ?? '').trim();
 		if (!/^\d{10}$/.test(number)) {
 			toast.show('El número debe tener 10 dígitos', 'error');
 			return;
@@ -113,7 +113,8 @@
 	}
 
 	function handleInputChange() {
-		if (phoneInput.length > 10) phoneInput = phoneInput.slice(0, 10);
+		const s = String(phoneInput ?? '');
+		if (s.length > 10) phoneInput = s.slice(0, 10);
 	}
 
 	function removeGuest(number) {
@@ -203,7 +204,8 @@
 			loadStats();
 		} catch (e) {
 			console.error(e);
-			toast.show('Error al procesar la lista', 'error');
+			const msg = e?.message || 'Error al procesar la lista';
+			toast.show(msg, 'error');
 		} finally {
 			processing = false;
 		}
