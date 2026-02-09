@@ -1,11 +1,13 @@
 <script>
 	import { onMount } from 'svelte';
 	import { toastStore as toast } from '$lib/stores/toast.svelte.js';
-	import { getReferidos, aprobarReferido, rechazarReferido, revocarInvitacion, anularQR, eliminarRegistro } from '$lib/api/endpoints.js';
+	import { getReferidos, getRegistros, aprobarReferido, rechazarReferido, revocarInvitacion, anularQR, eliminarRegistro, desaprobarUsuario } from '$lib/api/endpoints.js';
 	import { formatPhone, formatDate, getInitials, debounce } from '$lib/utils/index.js';
 	import Modal from '$lib/components/Modal.svelte';
 	import StatCard from '$lib/components/StatCard.svelte';
+	import CiudadanoInfo from '$lib/components/CiudadanoInfo.svelte';
 
+	let actionLoading = $state(null);
 	let allReferidos = $state.raw([]);
 	let searchTerm = $state('');
 	let currentFilter = $state('pendientes');
@@ -88,12 +90,29 @@
 	async function loadReferidosData() {
 		loading = true;
 		try {
-			const data = await getReferidos();
-			allReferidos = data.invitados || [];
-			statTotal = data.total || allReferidos.length;
+			const [data, regData] = await Promise.all([
+				getReferidos(),
+				getRegistros({ tipo: 'referido' }).catch(() => ({ registros: [] }))
+			]);
+			const referidos = data.invitados || [];
+			statTotal = data.total || referidos.length;
 			statPendientes = data.pendientes || 0;
 			statConfirmados = data.confirmados || 0;
-			statRechazados = allReferidos.filter(r => r.aceptacion === 'RECHAZADO').length;
+			statRechazados = referidos.filter(r => r.aceptacion === 'RECHAZADO').length;
+
+			// Enrich with id_uuid from /gestion/registros (needed for management actions)
+			const registros = regData.registros || regData.usuarios || [];
+			const uuidByCedula = {};
+			const uuidByTel = {};
+			for (const r of registros) {
+				if (r.cedula && r.id_uuid) uuidByCedula[r.cedula] = r.id_uuid;
+				if (r.telefono && r.id_uuid) uuidByTel[r.telefono] = r.id_uuid;
+			}
+			allReferidos = referidos.map(ref => {
+				const id_uuid = (ref.cedula && uuidByCedula[ref.cedula]) ||
+					(ref.numeroReferido && uuidByTel[ref.numeroReferido]) || null;
+				return id_uuid ? { ...ref, _id_uuid: id_uuid } : ref;
+			});
 		} catch (e) {
 			console.error(e);
 			toast.show('Error al cargar los referidos', 'error');
@@ -175,6 +194,53 @@
 
 	function isPendiente(ref) {
 		return ref.estado === 'consumido' && ref.aceptacion === null;
+	}
+
+	async function handleRefEliminar(ref) {
+		if (!ref._id_uuid) { toast.show('Sin registro de usuario para eliminar', 'error'); return; }
+		if (!confirm(`¿Eliminar registro de ${ref.nombre || ref.numeroReferido}? IRREVERSIBLE.`)) return;
+		actionLoading = ref.id;
+		try {
+			await eliminarRegistro(ref._id_uuid);
+			toast.show('Registro eliminado');
+			allReferidos = allReferidos.filter(r => r.id !== ref.id);
+		} catch (e) {
+			toast.show(e.message || 'Error al eliminar', 'error');
+		} finally {
+			actionLoading = null;
+		}
+	}
+
+	async function handleRefDesaprobar(ref) {
+		if (!ref._id_uuid) { toast.show('Sin registro de usuario', 'error'); return; }
+		if (!confirm(`¿Desaprobar a ${ref.nombre || ref.numeroReferido}? Volverá a pendiente.`)) return;
+		actionLoading = ref.id;
+		try {
+			await desaprobarUsuario(ref._id_uuid);
+			toast.show('Referido desaprobado');
+			allReferidos = allReferidos.map(r =>
+				r.id === ref.id ? { ...r, aceptacion: null } : r
+			);
+		} catch (e) {
+			toast.show(e.message || 'Error al desaprobar', 'error');
+		} finally {
+			actionLoading = null;
+		}
+	}
+
+	async function handleRefAnularQR(ref) {
+		if (!ref._id_uuid) { toast.show('Sin registro de usuario', 'error'); return; }
+		if (!confirm(`¿Anular el QR de ${ref.nombre || ref.numeroReferido}?`)) return;
+		actionLoading = ref.id;
+		try {
+			await anularQR(ref._id_uuid);
+			toast.show('QR anulado');
+			await loadReferidosData();
+		} catch (e) {
+			toast.show(e.message || 'Error al anular QR', 'error');
+		} finally {
+			actionLoading = null;
+		}
 	}
 
 	const debouncedSearch = debounce((e) => {
@@ -296,11 +362,20 @@
 											<span>{ref.cedula || 'Sin Cédula'}</span>
 											{#if ref.nombre} &bull; <span>{ref.nombre}</span>{/if}
 										</div>
+										{#if ref.cedula}
+											<CiudadanoInfo cedula={ref.cedula} />
+										{/if}
 									</div>
 									<div class="item-actions">
 										{#if isPendiente(ref)}
 											<button class="btn-reject-sm" onclick={(e) => { e.stopPropagation(); showRejectModal(ref.id); }}>✕ No</button>
 											<button class="btn-approve-sm" onclick={(e) => { e.stopPropagation(); showApproveModal(ref.id); }}>✓ Sí</button>
+										{:else if ref.aceptacion === 'ACEPTADO' && ref._id_uuid}
+											<button class="btn btn-sm btn-danger-outline" disabled={actionLoading === ref.id} onclick={(e) => { e.stopPropagation(); handleRefAnularQR(ref); }}>Anular QR</button>
+											<button class="btn btn-sm btn-danger-outline" disabled={actionLoading === ref.id} onclick={(e) => { e.stopPropagation(); handleRefDesaprobar(ref); }}>Desaprobar</button>
+											<button class="btn btn-sm btn-danger-outline" disabled={actionLoading === ref.id} onclick={(e) => { e.stopPropagation(); handleRefEliminar(ref); }}>
+												{#if actionLoading === ref.id}<span class="loader"></span>{:else}Eliminar{/if}
+											</button>
 										{/if}
 									</div>
 								</div>
@@ -361,14 +436,24 @@
 				</div>
 			</div>
 
-			<div style="display: flex; gap: 0.75rem;">
+			<div style="display: flex; flex-direction: column; gap: 0.5rem;">
 				{#if isPendiente(selectedReferido)}
-					<button class="btn btn-danger" style="flex: 1;" onclick={() => showRejectModal(selectedReferido.id)}>✕ Rechazar</button>
-					<button class="btn btn-success" style="flex: 1;" onclick={() => showApproveModal(selectedReferido.id)}>✓ Aprobar Solicitud</button>
+					<div style="display: flex; gap: 0.75rem;">
+						<button class="btn btn-danger" style="flex: 1;" onclick={() => showRejectModal(selectedReferido.id)}>✕ Rechazar</button>
+						<button class="btn btn-success" style="flex: 1;" onclick={() => showApproveModal(selectedReferido.id)}>✓ Aprobar</button>
+					</div>
 				{:else if selectedReferido.aceptacion === 'ACEPTADO'}
-					<div style="width: 100%; text-align: center; color: var(--success); font-weight: 600;">✅ Ya aprobado</div>
+					{#if selectedReferido._id_uuid}
+						<div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+							<button class="btn btn-sm btn-danger-outline" style="flex: 1;" disabled={actionLoading === selectedReferido.id} onclick={() => { handleRefAnularQR(selectedReferido); detailsOpen = false; }}>Anular QR</button>
+							<button class="btn btn-sm btn-danger-outline" style="flex: 1;" disabled={actionLoading === selectedReferido.id} onclick={() => { handleRefDesaprobar(selectedReferido); detailsOpen = false; }}>Desaprobar</button>
+							<button class="btn btn-sm btn-danger-outline" style="flex: 1;" disabled={actionLoading === selectedReferido.id} onclick={() => { handleRefEliminar(selectedReferido); detailsOpen = false; }}>Eliminar</button>
+						</div>
+					{:else}
+						<div style="text-align: center; color: var(--success); font-weight: 600;">Aprobado</div>
+					{/if}
 				{:else if selectedReferido.aceptacion === 'RECHAZADO'}
-					<div style="width: 100%; text-align: center; color: var(--danger); font-weight: 600;">❌ Rechazado</div>
+					<div style="text-align: center; color: var(--danger); font-weight: 600;">Rechazado</div>
 				{/if}
 			</div>
 

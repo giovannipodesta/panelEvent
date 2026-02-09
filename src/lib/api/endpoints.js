@@ -158,3 +158,19 @@ export function desaprobarUsuario(idUuid) {
 export function eliminarToken(tokenId) {
 	return apiFetch(`/gestion/token/${tokenId}`, { method: 'DELETE' });
 }
+
+// ==========================================
+// CIUDADANO: Consulta pública por cédula
+// ==========================================
+
+export function consultarCiudadano(cedula) {
+	return apiFetch(`/ciudadano/consultar/${cedula}`);
+}
+
+export function consultarAntecedentes(cedula) {
+	return apiFetch(`/ciudadano/antecedentes/${cedula}`);
+}
+
+export function consultarNombre(cedula) {
+	return apiFetch(`/ciudadano/nombre/${cedula}`);
+}

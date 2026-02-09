@@ -6,6 +6,7 @@
 	import { formatPhone, formatDate, formatCountdown, debounce } from '$lib/utils/index.js';
 	import StatCard from '$lib/components/StatCard.svelte';
 	import ExpandableCard from '$lib/components/ExpandableCard.svelte';
+	import CiudadanoInfo from '$lib/components/CiudadanoInfo.svelte';
 
 	// Sub-tab state
 	let activeSubTab = $state('pending');
@@ -359,6 +360,9 @@
 							</div>
 							<span class="badge badge-info">{getCategoryName(user.categoria)}</span>
 						</div>
+						{#if user.cedula}
+							<CiudadanoInfo cedula={user.cedula} />
+						{/if}
 						<div class="worker-card-actions">
 							<button
 								class="btn btn-danger-outline"
@@ -462,6 +466,9 @@
 								<span class="badge badge-info">{getCategoryName(user.categoria)}</span>
 							</div>
 						</div>
+						{#if user.cedula}
+							<CiudadanoInfo cedula={user.cedula} />
+						{/if}
 						<div class="worker-card-actions">
 							<button
 								class="btn btn-sm btn-danger-outline"
