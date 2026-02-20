@@ -34,12 +34,24 @@
 			desc: 'Generar',
 			icon: 'M3 11h18v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V11z M7 11V7a5 5 0 0 1 10 0v4',
 			match: (p) => p.startsWith(`${base}/token`)
+		},
+		{
+			href: `${base}/ruleta`,
+			label: 'Ruleta',
+			desc: 'Sorteo',
+			icon: 'M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z M12 6v6l4 2',
+			match: (p) => p.startsWith(`${base}/ruleta`)
 		}
 	];
 
 	let currentPath = $derived($page.url.pathname);
+	let isRuleta = $derived(currentPath.startsWith(`${base}/ruleta`));
 </script>
 
+{#if isRuleta}
+	<!-- Ruleta: full-screen, no shell -->
+	{@render children()}
+{:else}
 <div class="container">
 	<header>
 		<div class="logo-container">
@@ -74,6 +86,7 @@
 		{@render children()}
 	</main>
 </div>
+{/if}
 
 <Toast />
 
@@ -107,9 +120,9 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		gap: 0.3rem;
-		padding: 0.65rem 0.25rem;
-		min-height: 56px;
+		gap: 0.25rem;
+		padding: 0.55rem 0.15rem;
+		min-height: 52px;
 		background: transparent;
 		border: none;
 		border-radius: var(--radius-md);
@@ -128,12 +141,12 @@
 	}
 
 	.tab-label-main {
-		font-size: 0.8rem;
+		font-size: 0.72rem;
 		font-weight: 600;
 	}
 
 	.tab-label-desc {
-		font-size: 0.65rem;
+		font-size: 0.6rem;
 		opacity: 0.7;
 	}
 
